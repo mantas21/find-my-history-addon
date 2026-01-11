@@ -260,7 +260,19 @@ Contributions are welcome! Please open an issue or pull request.
 
 ## 📄 License
 
-MIT License
+**Proprietary - All Rights Reserved**
+
+Copyright (c) 2025 Mantas Mazuna
+
+This software is proprietary and confidential. Unauthorized copying, modification, 
+distribution, or use of this software, via any medium, is strictly prohibited 
+without the express written permission of the copyright holder.
+
+**Personal Use Only**: This software is provided for personal, non-commercial use. 
+You may use it for your own Home Assistant setup, but you may not redistribute, 
+modify for distribution, or use commercially without permission.
+
+For licensing inquiries, please contact the repository owner.
 
 ## 💬 Support
 
