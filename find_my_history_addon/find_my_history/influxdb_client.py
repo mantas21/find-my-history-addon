@@ -111,7 +111,7 @@ class InfluxDBLocationClient:
             )
 
             if accuracy is not None:
-                point = point.field("accuracy", accuracy)
+                point = point.field("accuracy", float(accuracy))
             if altitude is not None:
                 point = point.field("altitude", altitude)
 
@@ -203,6 +203,33 @@ class InfluxDBLocationClient:
 
         except Exception as e:
             _LOGGER.error(f"Failed to query locations from InfluxDB: {e}", exc_info=True)
+            return []
+
+    def get_unique_devices(self) -> List[str]:
+        """
+        Get list of unique device IDs from InfluxDB.
+
+        Returns:
+            List of device entity IDs that have location data
+        """
+        try:
+            # Query for unique device_id tag values
+            query = f'''import "influxdata/influxdb/schema"
+schema.tagValues(bucket: "{self.bucket}", tag: "device_id")'''
+
+            tables = self.query_api.query(query)
+            
+            devices = []
+            for table in tables:
+                for record in table.records:
+                    value = record.get_value()
+                    if value:
+                        devices.append(value)
+            
+            return devices
+
+        except Exception as e:
+            _LOGGER.warning(f"Failed to get unique devices from InfluxDB: {e}")
             return []
 
     def close(self):

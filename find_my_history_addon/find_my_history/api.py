@@ -150,18 +150,33 @@ class LocationHistoryAPI:
     async def get_devices(self, request: web.Request) -> web.Response:
         """Get list of tracked devices."""
         try:
-            # Get all device trackers
+            devices = []
+            
+            # Try to get device trackers from HA
             trackers = self.ha_client.get_all_device_trackers()
             
-            devices = []
-            for tracker in trackers:
-                entity_id = tracker.get("entity_id", "")
-                if entity_id.startswith("device_tracker."):
-                    devices.append({
-                        "entity_id": entity_id,
-                        "name": tracker.get("attributes", {}).get("friendly_name", entity_id),
-                        "state": tracker.get("state"),
-                    })
+            if trackers:
+                for tracker in trackers:
+                    entity_id = tracker.get("entity_id", "")
+                    if entity_id.startswith("device_tracker."):
+                        devices.append({
+                            "entity_id": entity_id,
+                            "name": tracker.get("attributes", {}).get("friendly_name", entity_id),
+                            "state": tracker.get("state"),
+                        })
+            
+            # If no devices from HA, try to get unique devices from InfluxDB
+            if not devices:
+                try:
+                    influx_devices = self.influx_client.get_unique_devices()
+                    for device_id in influx_devices:
+                        devices.append({
+                            "entity_id": device_id,
+                            "name": device_id.replace("device_tracker.", "").replace("_", " ").title(),
+                            "state": "unknown",
+                        })
+                except Exception as e:
+                    _LOGGER.warning(f"Could not get devices from InfluxDB: {e}")
 
             return web.json_response({"devices": devices})
 
