@@ -244,7 +244,7 @@
 
         async function loadDevices() {
             try {
-                const response = await fetch('/api/devices');
+                const response = await fetch('./api/devices');
                 const data = await response.json();
                 
                 const select = document.getElementById('device-select');
@@ -292,7 +292,7 @@
             
             try {
                 const response = await fetch(
-                    `/api/locations?device_id=${encodeURIComponent(deviceId)}&start=${range.start}&end=${range.end}&limit=10000`
+                    `./api/locations?device_id=${encodeURIComponent(deviceId)}&start=${range.start}&end=${range.end}&limit=10000`
                 );
                 const data = await response.json();
                 
