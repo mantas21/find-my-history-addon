@@ -14,5 +14,7 @@ black>=23.7.0
 mypy>=1.5.0
 
 # E2E testing (optional)
+# Note: docker-compose has PyYAML<6 requirement, incompatible with PyYAML>=6.0
+# If E2E testing is needed, install docker-compose separately or use newer alternatives
 docker>=6.1.0
-docker-compose>=1.29.0
+# docker-compose>=1.29.0  # Disabled: conflicts with PyYAML>=6.0 requirement
