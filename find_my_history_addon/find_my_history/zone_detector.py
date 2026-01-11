@@ -19,6 +19,12 @@ class ZoneDetector:
         """
         self.zones = zones
         _LOGGER.info(f"Initialized with {len(zones)} zones")
+        for zone in zones:
+            name = zone.get("name", "unknown")
+            lat = zone.get("latitude")
+            lon = zone.get("longitude")
+            radius = zone.get("radius", 100)
+            _LOGGER.info(f"  Zone: {name} @ ({lat}, {lon}) radius={radius}m")
 
     def _calculate_distance(
         self, lat1: float, lon1: float, lat2: float, lon2: float
@@ -61,8 +67,12 @@ class ZoneDetector:
             Tuple of (in_zone (bool), zone_name (str or None))
         """
         if not self.zones:
+            _LOGGER.warning("No zones loaded for zone detection")
             return False, None
 
+        closest_zone = None
+        closest_distance = float('inf')
+        
         for zone in self.zones:
             zone_lat = zone.get("latitude")
             zone_lon = zone.get("longitude")
@@ -70,6 +80,7 @@ class ZoneDetector:
             zone_name = zone.get("name", "unknown")
 
             if zone_lat is None or zone_lon is None:
+                _LOGGER.warning(f"Zone {zone_name} has no coordinates, skipping")
                 continue
 
             # Calculate distance from device to zone center
@@ -77,16 +88,26 @@ class ZoneDetector:
                 latitude, longitude, zone_lat, zone_lon
             )
 
+            _LOGGER.debug(
+                f"Zone '{zone_name}': distance={distance:.1f}m, radius={zone_radius}m"
+            )
+            
+            # Track closest zone
+            if distance < closest_distance:
+                closest_distance = distance
+                closest_zone = zone_name
+
             # Check if within zone radius
             if distance <= zone_radius:
-                _LOGGER.debug(
-                    f"Device at ({latitude}, {longitude}) is in zone "
-                    f"{zone_name} (distance: {distance:.1f}m)"
+                _LOGGER.info(
+                    f"Device at ({latitude:.5f}, {longitude:.5f}) is in zone "
+                    f"'{zone_name}' (distance: {distance:.1f}m, radius: {zone_radius}m)"
                 )
                 return True, zone_name
 
-        _LOGGER.debug(
-            f"Device at ({latitude}, {longitude}) is not in any zone"
+        _LOGGER.info(
+            f"Device at ({latitude:.5f}, {longitude:.5f}) is not in any zone. "
+            f"Closest: '{closest_zone}' at {closest_distance:.1f}m"
         )
         return False, None
 
