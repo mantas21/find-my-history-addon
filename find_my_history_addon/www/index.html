@@ -672,14 +672,15 @@
         }
         
         .findmy-popup {
-            padding: var(--spacing-sm) var(--spacing-md);
+            padding: var(--spacing-md) var(--spacing-lg);
             text-align: center;
-            min-width: 80px;
+            min-width: 100px;
         }
         
         .popup-title {
             font-size: var(--font-size-footnote);
             font-weight: 600;
+            margin-bottom: 4px;
         }
         
         .popup-subtitle {
@@ -1052,6 +1053,52 @@
             const dLon = (loc2.longitude - loc1.longitude) * Math.PI / 180;
             const a = Math.sin(dLat/2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon/2) ** 2;
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+        
+        function fitMapToLocations(coords) {
+            if (coords.length === 0) return;
+            
+            // Calculate bounds
+            const bounds = L.latLngBounds(coords);
+            
+            // Calculate the span (distance) of the bounds
+            const northEast = bounds.getNorthEast();
+            const southWest = bounds.getSouthWest();
+            
+            // Calculate approximate distance in meters
+            const latSpan = (northEast.lat - southWest.lat) * 111000; // ~111km per degree
+            const lonSpan = (northEast.lng - southWest.lng) * 111000 * Math.cos((northEast.lat + southWest.lat) / 2 * Math.PI / 180);
+            const maxSpan = Math.max(latSpan, lonSpan);
+            
+            // Determine padding based on span
+            // For small areas (< 5km), use smaller padding
+            // For larger areas, use larger padding but cap it
+            let padding;
+            if (maxSpan < 5000) {
+                // Very local area - minimal padding
+                padding = [80, 80];
+            } else if (maxSpan < 50000) {
+                // City/regional area - moderate padding
+                padding = [100, 100];
+            } else {
+                // Large area - more padding but not excessive
+                padding = [120, 120];
+            }
+            
+            // Fit bounds with calculated padding
+            map.fitBounds(bounds, { 
+                padding: padding,
+                maxZoom: 18, // Don't zoom in too much even if locations are very close
+                animate: true
+            });
+            
+            // If the zoom level is too high (locations are very close), set a minimum zoom
+            setTimeout(() => {
+                const currentZoom = map.getZoom();
+                if (currentZoom > 18 && maxSpan < 1000) {
+                    map.setZoom(18, { animate: true });
+                }
+            }, 100);
         }
         
         function calculateDuration(locs, idx) {
@@ -1600,8 +1647,11 @@
                     updateHeatmap();
                 }
                 
+                // Smart autozoom: fit all locations but don't zoom too far out
                 const coords = locations.map(l => [l.latitude, l.longitude]);
-                map.fitBounds(coords, { padding: [50, 50] });
+                if (coords.length > 0) {
+                    fitMapToLocations(coords);
+                }
                 
             } catch (error) {
                 showToast('Failed to load data: ' + error.message, 'error');
