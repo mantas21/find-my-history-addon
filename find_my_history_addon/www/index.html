@@ -277,8 +277,8 @@
         }
         .map-controls {
             position: absolute;
-            top: 10px;
-            right: 10px;
+            bottom: 30px;
+            left: 10px;
             z-index: 1000;
             background: rgba(42, 42, 42, 0.95);
             padding: 8px 12px;
@@ -1393,12 +1393,8 @@
                 const marker = L.marker([loc.latitude, loc.longitude], { icon })
                     .addTo(allMarkersLayer);
                 
-                // Create initial popup with loading state - offset to side so it doesn't cover path
-                const popup = L.popup({
-                    offset: [120, 0],
-                    autoPan: true,
-                    autoPanPadding: [50, 50]
-                }).setContent(createPopupContent(loc, index, null));
+                // Create initial popup with loading state
+                const popup = L.popup().setContent(createPopupContent(loc, index, null));
                 marker.bindPopup(popup);
                 
                 // Load place name when popup opens
@@ -1433,13 +1429,8 @@
             const marker = L.marker([loc.latitude, loc.longitude], { icon })
                 .addTo(markerLayer);
             
-            // Create popup with initial loading state - offset to side so it doesn't cover path
-            const popup = L.popup({ 
-                maxWidth: 280,
-                offset: [120, 0],
-                autoPan: true,
-                autoPanPadding: [50, 50]
-            }).setContent(createPopupContent(loc, idx, null));
+            // Create popup with initial loading state
+            const popup = L.popup({ maxWidth: 280 }).setContent(createPopupContent(loc, idx, null));
             marker.bindPopup(popup).openPopup();
             
             // Load place name asynchronously
