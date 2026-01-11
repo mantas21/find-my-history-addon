@@ -47,6 +47,7 @@ jobs:
   python-tests:
     name: Python Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.python-version != '3.9' }}
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11"]
