@@ -124,6 +124,87 @@ const heatLayer = L.heatLayer(heatData, {
 
 ---
 
+## Feature 4: Enhanced Location Popup with Duration and Previous Location
+
+**Current behavior:** Popup shows device name, time, zone, and coordinates only.
+
+**Desired behavior:** Show how long the device stayed at this location and where they came from (previous stable location).
+
+### 4.1 Duration at Current Location
+
+**Requirements:**
+- Calculate time spent at the current location cluster
+- A "location cluster" = all points within **100 meters radius** of the selected point
+- Display duration in the popup: "Duration: 2h 15m" or "Duration: 45m"
+- Look at consecutive points in the same cluster and sum the time gaps
+
+**Algorithm:**
+```
+1. For the selected location point, find all consecutive points within 100m radius
+2. First point in cluster = arrival time
+3. Last point in cluster = departure time (or "now" if still there)
+4. Duration = departure - arrival
+```
+
+**Distance calculation (Haversine formula):**
+```javascript
+function getDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // Earth radius in meters
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // Distance in meters
+}
+```
+
+### 4.2 Previous Stable Location
+
+**Purpose:** Show where the device was before arriving at the current location, filtering out transit (walking/driving).
+
+**Definition of "stable location":**
+- Device stayed in the same location cluster (100m radius) for **at least 30 minutes**
+
+**Requirements:**
+- Find the previous stable location before the current one
+- Skip over transit points (locations where device was moving/passing through)
+- Display in popup: "From: Home (1.2 km away)" or "From: 54.7123, 25.2456 (3.5 km)"
+- If previous stable location is a known zone, show the zone name
+- Show distance from previous stable location to current location
+
+**Algorithm:**
+```
+1. Starting from current location, go backwards in time through location points
+2. Skip points that are within the current location cluster (100m radius)
+3. For each new cluster found, check if device stayed there for 30+ minutes
+4. If yes -> this is the "previous stable location"
+5. If no -> continue searching backwards
+6. Calculate distance between previous stable location and current location
+```
+
+**Visual example - Enhanced Popup:**
+```
++----------------------------------+
+| Viktorija's iPhone           ✕  |
++----------------------------------+
+| Time: 11/01/2026, 12:50:12       |
+| Zone: Unknown                    |
+| Coords: 54.71881, 25.30142       |
++----------------------------------+
+| ⏱ Duration: 1h 23m               |
+| ← From: Home (2.4 km away)       |
++----------------------------------+
+```
+
+**Edge cases:**
+- If no previous stable location found: show "From: -" or hide the line
+- If current location is the first in history: show "From: Start of tracking"
+- If previous stable location has no zone: show coordinates instead
+
+---
+
 ## Technical Notes
 
 - The existing code uses vanilla JavaScript (no framework)
@@ -143,4 +224,6 @@ const heatLayer = L.heatLayer(heatData, {
 4. Adding a device to tracking moves it to the button row
 5. Heatmap toggle exists and is OFF by default
 6. Enabling heatmap shows time-weighted heat overlay for selected device
-7. All existing functionality (map, path, markers, playback) continues to work
+7. Location popup shows duration at current location (points within 100m radius)
+8. Location popup shows previous stable location (stayed 30+ mins) with distance
+9. All existing functionality (map, path, markers, playback) continues to work

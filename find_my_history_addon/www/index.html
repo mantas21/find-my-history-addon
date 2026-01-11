@@ -377,6 +377,64 @@
             width: 40px;
             border-radius: 3px;
         }
+        
+        /* Enhanced Popup Styles */
+        .leaflet-popup-content {
+            margin: 0 !important;
+        }
+        .location-popup {
+            min-width: 220px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .popup-header {
+            padding: 10px 12px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            border-radius: 4px 4px 0 0;
+        }
+        .popup-header .device-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #212529;
+        }
+        .popup-section {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .popup-section:last-child {
+            border-bottom: none;
+        }
+        .popup-section.location .place-name {
+            font-weight: 500;
+            color: #212529;
+            margin-bottom: 2px;
+        }
+        .popup-section.location .place-address {
+            font-size: 12px;
+            color: #666;
+        }
+        .popup-section.timing .timestamp {
+            margin-bottom: 4px;
+            color: #495057;
+        }
+        .popup-section.timing .duration {
+            font-weight: 600;
+            color: #0d6efd;
+        }
+        .popup-section.origin .from-label {
+            font-weight: 500;
+            color: #495057;
+        }
+        .popup-section.origin .from-distance {
+            font-size: 12px;
+            color: #888;
+        }
+        .popup-loading {
+            color: #888;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -480,6 +538,307 @@
         let isPlaying = false;
         let playInterval = null;
         let moreDevicesExpanded = false;
+        
+        // ===== Helper Functions for Enhanced Popups =====
+        
+        const PLACE_CACHE_KEY = 'places_cache';
+        const PLACE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+        
+        function formatTimestamp(date) {
+            const now = new Date();
+            const d = new Date(date);
+            const isToday = d.toDateString() === now.toDateString();
+            const isYesterday = d.toDateString() === new Date(now - 86400000).toDateString();
+            const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+            
+            if (isToday) return `Today, ${time}`;
+            if (isYesterday) return `Yesterday, ${time}`;
+            
+            const daysDiff = Math.floor((now - d) / 86400000);
+            if (daysDiff < 7) {
+                return d.toLocaleDateString('en-US', { weekday: 'long' }) + `, ${time}`;
+            }
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + `, ${time}`;
+        }
+        
+        function formatDuration(ms) {
+            const minutes = Math.floor(ms / 60000);
+            if (minutes < 1) return '< 1 min';
+            if (minutes < 60) return `${minutes} min`;
+            
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            if (hours < 24) return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+            
+            const days = Math.floor(hours / 24);
+            const hrs = hours % 24;
+            return hrs > 0 ? `${days}d ${hrs}h` : `${days}d`;
+        }
+        
+        function formatDistance(meters) {
+            if (meters < 1000) return `${Math.round(meters)} m away`;
+            return `${(meters / 1000).toFixed(1)} km away`;
+        }
+        
+        function getDistance(loc1, loc2) {
+            const R = 6371000; // Earth radius in meters
+            const lat1 = loc1.latitude * Math.PI / 180;
+            const lat2 = loc2.latitude * Math.PI / 180;
+            const dLat = (loc2.latitude - loc1.latitude) * Math.PI / 180;
+            const dLon = (loc2.longitude - loc1.longitude) * Math.PI / 180;
+            
+            const a = Math.sin(dLat/2) ** 2 +
+                      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon/2) ** 2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+        
+        function calculateDuration(locs, idx) {
+            const current = locs[idx];
+            const RADIUS = 100; // meters
+            
+            // Find first point in this cluster (going backwards)
+            let startIndex = idx;
+            while (startIndex > 0) {
+                const prev = locs[startIndex - 1];
+                if (getDistance(current, prev) > RADIUS) break;
+                startIndex--;
+            }
+            
+            // Find last point in this cluster (going forwards)
+            let endIndex = idx;
+            while (endIndex < locs.length - 1) {
+                const next = locs[endIndex + 1];
+                if (getDistance(current, next) > RADIUS) break;
+                endIndex++;
+            }
+            
+            const arrival = new Date(locs[startIndex].time);
+            const departure = new Date(locs[endIndex].time);
+            return departure - arrival; // milliseconds
+        }
+        
+        function findPreviousStableLocation(locs, idx) {
+            if (idx <= 0) return null;
+            
+            const current = locs[idx];
+            const RADIUS = 100; // meters
+            const MIN_STABLE_TIME = 30 * 60 * 1000; // 30 minutes
+            
+            // Step 1: Skip past current location cluster
+            let searchIndex = idx;
+            while (searchIndex > 0) {
+                const prev = locs[searchIndex - 1];
+                if (getDistance(current, prev) > RADIUS) break;
+                searchIndex--;
+            }
+            searchIndex--; // Move to first point outside current cluster
+            
+            if (searchIndex < 0) return null;
+            
+            // Step 2: Search backwards for a stable location
+            while (searchIndex >= 0) {
+                const candidate = locs[searchIndex];
+                
+                // Find cluster boundaries for this candidate
+                let clusterStart = searchIndex;
+                while (clusterStart > 0) {
+                    if (getDistance(candidate, locs[clusterStart - 1]) > RADIUS) break;
+                    clusterStart--;
+                }
+                
+                let clusterEnd = searchIndex;
+                while (clusterEnd < locs.length - 1) {
+                    if (getDistance(candidate, locs[clusterEnd + 1]) > RADIUS) break;
+                    clusterEnd++;
+                }
+                
+                // Check if stable (30+ minutes)
+                const duration = new Date(locs[clusterEnd].time) - new Date(locs[clusterStart].time);
+                
+                if (duration >= MIN_STABLE_TIME) {
+                    return {
+                        location: candidate,
+                        zoneName: candidate.in_zone ? candidate.zone_name : null,
+                        distance: getDistance(current, candidate)
+                    };
+                }
+                
+                // Move to before this cluster and continue searching
+                searchIndex = clusterStart - 1;
+            }
+            
+            return null;
+        }
+        
+        // Nominatim reverse geocoding (free, no API key needed)
+        let nominatimQueue = [];
+        let nominatimProcessing = false;
+        
+        async function processNominatimQueue() {
+            if (nominatimProcessing || nominatimQueue.length === 0) return;
+            nominatimProcessing = true;
+            
+            const { lat, lng, resolve } = nominatimQueue.shift();
+            
+            try {
+                const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&zoom=18`;
+                const response = await fetch(url, {
+                    headers: { 'User-Agent': 'FindMyHistory/1.0' }
+                });
+                const data = await response.json();
+                
+                const name = data.name || 
+                             data.address?.amenity || 
+                             data.address?.shop ||
+                             data.address?.tourism ||
+                             data.address?.building;
+                
+                const road = data.address?.road || data.address?.street;
+                const houseNumber = data.address?.house_number;
+                const streetAddr = houseNumber && road ? `${road} ${houseNumber}` : road;
+                
+                resolve({
+                    primary: name || streetAddr || 'Unknown location',
+                    secondary: name && streetAddr ? streetAddr : null,
+                    icon: '📍'
+                });
+            } catch (error) {
+                resolve(null);
+            }
+            
+            nominatimProcessing = false;
+            // Rate limit: 1 request per second
+            setTimeout(processNominatimQueue, 1100);
+        }
+        
+        function getNominatimPlace(lat, lng) {
+            return new Promise(resolve => {
+                nominatimQueue.push({ lat, lng, resolve });
+                processNominatimQueue();
+            });
+        }
+        
+        function getCacheKey(lat, lng) {
+            return `${lat.toFixed(3)},${lng.toFixed(3)}`;
+        }
+        
+        function getCachedPlace(lat, lng) {
+            try {
+                const cache = JSON.parse(localStorage.getItem(PLACE_CACHE_KEY) || '{}');
+                const key = getCacheKey(lat, lng);
+                const entry = cache[key];
+                if (entry && Date.now() - entry.timestamp < PLACE_CACHE_TTL) {
+                    return entry.data;
+                }
+            } catch (e) {}
+            return null;
+        }
+        
+        function cachePlace(lat, lng, placeData) {
+            try {
+                const cache = JSON.parse(localStorage.getItem(PLACE_CACHE_KEY) || '{}');
+                const key = getCacheKey(lat, lng);
+                cache[key] = { data: placeData, timestamp: Date.now() };
+                
+                // Limit cache size to ~500 entries
+                const keys = Object.keys(cache);
+                if (keys.length > 500) {
+                    keys.slice(0, keys.length - 500).forEach(k => delete cache[k]);
+                }
+                
+                localStorage.setItem(PLACE_CACHE_KEY, JSON.stringify(cache));
+            } catch (e) {}
+        }
+        
+        async function getLocationDisplayName(location) {
+            // 1. Check if in known HA zone
+            if (location.in_zone && location.zone_name) {
+                return {
+                    primary: location.zone_name,
+                    secondary: null,
+                    icon: '🏠'
+                };
+            }
+            
+            // 2. Check cache
+            const cached = getCachedPlace(location.latitude, location.longitude);
+            if (cached) return cached;
+            
+            // 3. Try Nominatim
+            const place = await getNominatimPlace(location.latitude, location.longitude);
+            if (place) {
+                cachePlace(location.latitude, location.longitude, place);
+                return place;
+            }
+            
+            // 4. Fallback to coordinates
+            return {
+                primary: 'Unknown location',
+                secondary: `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`,
+                icon: '📍'
+            };
+        }
+        
+        function createPopupContent(loc, idx, placeName = null) {
+            const deviceName = loc.device_name || loc.device_id;
+            const timestamp = formatTimestamp(loc.time);
+            const duration = calculateDuration(locations, idx);
+            const durationStr = formatDuration(duration);
+            const prevLocation = findPreviousStableLocation(locations, idx);
+            
+            let locationHtml = '';
+            if (placeName) {
+                locationHtml = `
+                    <div class="popup-section location">
+                        <div class="place-name">${placeName.icon} ${placeName.primary}</div>
+                        ${placeName.secondary ? `<div class="place-address">${placeName.secondary}</div>` : ''}
+                    </div>
+                `;
+            } else {
+                locationHtml = `
+                    <div class="popup-section location">
+                        <div class="place-name popup-loading">📍 Loading location...</div>
+                    </div>
+                `;
+            }
+            
+            let originHtml = '';
+            if (idx === 0) {
+                originHtml = `
+                    <div class="popup-section origin">
+                        <div class="from-label">← Start of tracking</div>
+                    </div>
+                `;
+            } else if (prevLocation) {
+                const fromName = prevLocation.zoneName || 
+                                 `${prevLocation.location.latitude.toFixed(4)}, ${prevLocation.location.longitude.toFixed(4)}`;
+                originHtml = `
+                    <div class="popup-section origin">
+                        <div class="from-label">← From: ${fromName}</div>
+                        <div class="from-distance">${formatDistance(prevLocation.distance)}</div>
+                    </div>
+                `;
+            }
+            
+            return `
+                <div class="location-popup">
+                    <div class="popup-header">
+                        <div class="device-name">${deviceName}</div>
+                    </div>
+                    ${locationHtml}
+                    <div class="popup-section timing">
+                        <div class="timestamp">🕐 ${timestamp}</div>
+                        <div class="duration">⏱️ Here for ${durationStr}</div>
+                    </div>
+                    ${originHtml}
+                </div>
+            `;
+        }
+        
+        async function updatePopupWithPlace(popup, loc, idx) {
+            const placeName = await getLocationDisplayName(loc);
+            popup.setContent(createPopupContent(loc, idx, placeName));
+        }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -853,19 +1212,23 @@
                     iconAnchor: [size/2, size/2]
                 });
                 
-                L.marker([loc.latitude, loc.longitude], { icon })
-                    .addTo(allMarkersLayer)
-                    .bindPopup(`
-                        <strong>${loc.device_name || loc.device_id}</strong><br>
-                        Time: ${new Date(loc.time).toLocaleString()}<br>
-                        Zone: ${loc.in_zone ? loc.zone_name : 'Unknown'}<br>
-                        Coords: ${loc.latitude.toFixed(5)}, ${loc.longitude.toFixed(5)}
-                    `)
-                    .on('click', () => {
-                        currentIndex = index;
-                        document.getElementById('time-slider').value = (index / Math.max(locations.length - 1, 1)) * 100;
-                        updateCurrentMarker();
-                    });
+                const marker = L.marker([loc.latitude, loc.longitude], { icon })
+                    .addTo(allMarkersLayer);
+                
+                // Create initial popup with loading state
+                const popup = L.popup().setContent(createPopupContent(loc, index, null));
+                marker.bindPopup(popup);
+                
+                // Load place name when popup opens
+                marker.on('popupopen', () => {
+                    updatePopupWithPlace(popup, loc, index);
+                });
+                
+                marker.on('click', () => {
+                    currentIndex = index;
+                    document.getElementById('time-slider').value = (index / Math.max(locations.length - 1, 1)) * 100;
+                    updateCurrentMarker();
+                });
             });
         }
         
@@ -875,6 +1238,7 @@
             if (locations.length === 0) return;
             
             const loc = locations[currentIndex];
+            const idx = currentIndex;
             const color = loc.in_zone ? '#198754' : '#dc3545';
             
             const icon = L.divIcon({
@@ -884,20 +1248,23 @@
                 iconAnchor: [12, 12]
             });
             
-            L.marker([loc.latitude, loc.longitude], { icon })
-                .addTo(markerLayer)
-                .bindPopup(`
-                    <strong>${loc.device_name || loc.device_id}</strong><br>
-                    Time: ${new Date(loc.time).toLocaleString()}<br>
-                    Zone: ${loc.in_zone ? loc.zone_name : 'Unknown'}<br>
-                    Coords: ${loc.latitude.toFixed(5)}, ${loc.longitude.toFixed(5)}
-                `)
-                .openPopup();
+            const marker = L.marker([loc.latitude, loc.longitude], { icon })
+                .addTo(markerLayer);
             
-            const timeStr = new Date(loc.time).toLocaleString();
+            // Create popup with initial loading state
+            const popup = L.popup({ maxWidth: 280 }).setContent(createPopupContent(loc, idx, null));
+            marker.bindPopup(popup).openPopup();
+            
+            // Load place name asynchronously
+            updatePopupWithPlace(popup, loc, idx);
+            
+            // Update time slider text
+            const timeStr = formatTimestamp(loc.time);
+            const duration = calculateDuration(locations, idx);
+            const durationStr = formatDuration(duration);
             const zoneStr = loc.in_zone ? loc.zone_name : 'Unknown';
             const pointNum = `[${currentIndex + 1}/${locations.length}]`;
-            document.getElementById('current-time').textContent = `${pointNum} ${timeStr} - ${zoneStr}`;
+            document.getElementById('current-time').textContent = `${pointNum} ${timeStr} - ${zoneStr} (${durationStr})`;
         }
 
         function showError(message) {
