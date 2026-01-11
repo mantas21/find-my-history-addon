@@ -17,7 +17,7 @@ RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
 # Copy application code
 COPY find_my_history/ /app/find_my_history/
 
-# Copy web UI files
+# Copy web UI files (cache-bust: v0.3.4)
 COPY www/ /app/www/
 
 # Copy S6 service files (proper integration with HA base image)
