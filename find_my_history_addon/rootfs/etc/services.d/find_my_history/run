@@ -1,28 +1,37 @@
-#!/usr/bin/with-contenv bashio
+#!/usr/bin/with-contenv sh
 # ==============================================================================
 # Start Find My Location History service
 # ==============================================================================
+set -e
 
-bashio::log.info "Starting Find My Location History..."
+echo "[find_my_history] Starting Find My Location History..."
+
+# Read config from options.json (Home Assistant add-on config location)
+CONFIG_PATH=/data/options.json
+
+if [ ! -f "$CONFIG_PATH" ]; then
+    echo "[find_my_history] Error: Configuration file not found at $CONFIG_PATH"
+    exit 1
+fi
 
 # Export configuration as environment variables
-export HA_URL=$(bashio::config 'ha_url')
-export HA_TOKEN=$(bashio::config 'ha_token')
-export CHECK_INTERVAL=$(bashio::config 'check_interval')
-export INFLUXDB_HOST=$(bashio::config 'influxdb_host')
-export INFLUXDB_PORT=$(bashio::config 'influxdb_port')
-export INFLUXDB_DATABASE=$(bashio::config 'influxdb_database')
-export INFLUXDB_USERNAME=$(bashio::config 'influxdb_username')
-export INFLUXDB_PASSWORD=$(bashio::config 'influxdb_password')
-export FOCUS_UNKNOWN_LOCATIONS=$(bashio::config 'focus_unknown_locations')
-export API_PORT=$(bashio::config 'api_port')
-export DEVICES="$(bashio::config 'devices')"
+export HA_URL=$(jq -r '.ha_url' $CONFIG_PATH)
+export HA_TOKEN=$(jq -r '.ha_token' $CONFIG_PATH)
+export CHECK_INTERVAL=$(jq -r '.check_interval' $CONFIG_PATH)
+export INFLUXDB_HOST=$(jq -r '.influxdb_host' $CONFIG_PATH)
+export INFLUXDB_PORT=$(jq -r '.influxdb_port' $CONFIG_PATH)
+export INFLUXDB_DATABASE=$(jq -r '.influxdb_database' $CONFIG_PATH)
+export INFLUXDB_USERNAME=$(jq -r '.influxdb_username' $CONFIG_PATH)
+export INFLUXDB_PASSWORD=$(jq -r '.influxdb_password' $CONFIG_PATH)
+export FOCUS_UNKNOWN_LOCATIONS=$(jq -r '.focus_unknown_locations' $CONFIG_PATH)
+export API_PORT=$(jq -r '.api_port' $CONFIG_PATH)
+export DEVICES=$(jq -c '.devices' $CONFIG_PATH)
 
-bashio::log.info "Configuration loaded"
-bashio::log.info "HA URL: ${HA_URL}"
-bashio::log.info "Check interval: ${CHECK_INTERVAL} minutes"
-bashio::log.info "InfluxDB: ${INFLUXDB_HOST}:${INFLUXDB_PORT}/${INFLUXDB_DATABASE}"
-bashio::log.info "API Port: ${API_PORT}"
+echo "[find_my_history] Configuration loaded"
+echo "[find_my_history] HA URL: ${HA_URL}"
+echo "[find_my_history] Check interval: ${CHECK_INTERVAL} minutes"
+echo "[find_my_history] InfluxDB: ${INFLUXDB_HOST}:${INFLUXDB_PORT}/${INFLUXDB_DATABASE}"
+echo "[find_my_history] API Port: ${API_PORT}"
 
 # Start the Python application
 cd /app

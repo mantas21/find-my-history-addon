@@ -1,6 +1,12 @@
-#!/usr/bin/execlineb -S1
+#!/usr/bin/with-contenv sh
 # ==============================================================================
 # Take down the S6 supervision tree when service exits
 # ==============================================================================
 
-/run/s6/basedir/bin/halt
+echo "[find_my_history] Service stopped with exit code: $1"
+
+# If the service exits with a non-zero code, take down the whole container
+if [ "$1" != "0" ] && [ "$1" != "256" ]; then
+    echo "[find_my_history] Service crashed, stopping container..."
+    /run/s6/basedir/bin/halt
+fi

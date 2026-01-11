@@ -16,10 +16,6 @@ RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
 
 # Copy application code
 COPY find_my_history/ /app/find_my_history/
-COPY run.sh /run.sh
 
-# Make run script executable
-RUN chmod a+x /run.sh
-
-# Run the application
-CMD ["/run.sh"]
+# Copy S6 service files (proper integration with HA base image)
+COPY rootfs /
