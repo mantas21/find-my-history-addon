@@ -19,3 +19,7 @@ COPY find_my_history/ /app/find_my_history/
 
 # Copy S6 service files (proper integration with HA base image)
 COPY rootfs /
+
+# Make S6 service scripts executable
+RUN chmod a+x /etc/services.d/find_my_history/run \
+    && chmod a+x /etc/services.d/find_my_history/finish
