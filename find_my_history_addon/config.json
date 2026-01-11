@@ -1,6 +1,6 @@
 {
   "name": "Find My Location History",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "slug": "find_my_history",
   "description": "Record and visualize device location history from iCloud integration with focus on unknown locations",
   "arch": ["amd64", "armhf", "armv7", "aarch64", "i386"],
@@ -16,8 +16,14 @@
   "options": {
     "ha_url": "http://supervisor/core",
     "ha_token": "",
-    "check_interval": 30,
-    "devices": [],
+    "default_interval": 5,
+    "tracked_devices": [
+      {
+        "entity_id": "device_tracker.example",
+        "interval_minutes": 5,
+        "enabled": true
+      }
+    ],
     "influxdb_host": "a0d7b954-influxdb",
     "influxdb_port": 8086,
     "influxdb_database": "find_my_history",
@@ -28,14 +34,20 @@
   },
   "schema": {
     "ha_url": "str",
-    "ha_token": "str",
-    "check_interval": "int(1,1440)",
-    "devices": ["str"],
+    "ha_token": "str?",
+    "default_interval": "int(1,1440)",
+    "tracked_devices": [
+      {
+        "entity_id": "str",
+        "interval_minutes": "int(1,1440)",
+        "enabled": "bool"
+      }
+    ],
     "influxdb_host": "str",
     "influxdb_port": "int(1,65535)",
     "influxdb_database": "str",
     "influxdb_username": "str",
-    "influxdb_password": "str",
+    "influxdb_password": "str?",
     "focus_unknown_locations": "bool",
     "api_port": "int(1,65535)?"
   },

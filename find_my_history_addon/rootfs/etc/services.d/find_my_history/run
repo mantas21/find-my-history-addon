@@ -16,20 +16,26 @@ fi
 
 # Export configuration as environment variables
 export HA_URL=$(jq -r '.ha_url' $CONFIG_PATH)
-export HA_TOKEN=$(jq -r '.ha_token' $CONFIG_PATH)
-export CHECK_INTERVAL=$(jq -r '.check_interval' $CONFIG_PATH)
+export HA_TOKEN=$(jq -r '.ha_token // ""' $CONFIG_PATH)
+export DEFAULT_INTERVAL=$(jq -r '.default_interval // 5' $CONFIG_PATH)
 export INFLUXDB_HOST=$(jq -r '.influxdb_host' $CONFIG_PATH)
 export INFLUXDB_PORT=$(jq -r '.influxdb_port' $CONFIG_PATH)
 export INFLUXDB_DATABASE=$(jq -r '.influxdb_database' $CONFIG_PATH)
 export INFLUXDB_USERNAME=$(jq -r '.influxdb_username' $CONFIG_PATH)
-export INFLUXDB_PASSWORD=$(jq -r '.influxdb_password' $CONFIG_PATH)
+export INFLUXDB_PASSWORD=$(jq -r '.influxdb_password // ""' $CONFIG_PATH)
 export FOCUS_UNKNOWN_LOCATIONS=$(jq -r '.focus_unknown_locations' $CONFIG_PATH)
 export API_PORT=$(jq -r '.api_port' $CONFIG_PATH)
-export DEVICES=$(jq -c '.devices' $CONFIG_PATH)
+
+# New format: tracked_devices with per-device intervals
+export TRACKED_DEVICES=$(jq -c '.tracked_devices // []' $CONFIG_PATH)
+
+# Backward compatibility: also export old devices format
+export DEVICES=$(jq -c '.devices // []' $CONFIG_PATH)
+export CHECK_INTERVAL=$(jq -r '.check_interval // 30' $CONFIG_PATH)
 
 echo "[find_my_history] Configuration loaded"
 echo "[find_my_history] HA URL: ${HA_URL}"
-echo "[find_my_history] Check interval: ${CHECK_INTERVAL} minutes"
+echo "[find_my_history] Default interval: ${DEFAULT_INTERVAL} minutes"
 echo "[find_my_history] InfluxDB: ${INFLUXDB_HOST}:${INFLUXDB_PORT}/${INFLUXDB_DATABASE}"
 echo "[find_my_history] API Port: ${API_PORT}"
 

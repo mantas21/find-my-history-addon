@@ -25,28 +25,47 @@ _LOGGER = logging.getLogger(__name__)
 
 def load_config() -> Dict:
     """Load configuration from environment variables (set by run.sh from options.json)."""
-    # Parse devices from JSON string
-    devices_str = os.environ.get("DEVICES", "[]")
+    # Parse tracked_devices from JSON string (new format with per-device intervals)
+    tracked_devices_str = os.environ.get("TRACKED_DEVICES", "[]")
     try:
-        devices = json.loads(devices_str) if devices_str else []
+        tracked_devices = json.loads(tracked_devices_str) if tracked_devices_str else []
     except json.JSONDecodeError:
-        _LOGGER.warning(f"Could not parse DEVICES: {devices_str}")
-        devices = []
+        _LOGGER.warning(f"Could not parse TRACKED_DEVICES: {tracked_devices_str}")
+        tracked_devices = []
+
+    # Also support old DEVICES format for backward compatibility
+    if not tracked_devices:
+        devices_str = os.environ.get("DEVICES", "[]")
+        try:
+            old_devices = json.loads(devices_str) if devices_str else []
+            # Convert old format (list of strings) to new format
+            default_interval = int(os.environ.get("DEFAULT_INTERVAL", "5"))
+            tracked_devices = [
+                {"entity_id": d, "interval_minutes": default_interval, "enabled": True}
+                for d in old_devices if isinstance(d, str)
+            ]
+        except json.JSONDecodeError:
+            pass
+
+    # Filter enabled devices and remove example entries
+    tracked_devices = [
+        d for d in tracked_devices 
+        if d.get("enabled", True) and d.get("entity_id") and "example" not in d.get("entity_id", "")
+    ]
 
     # Parse boolean
     focus_unknown_str = os.environ.get("FOCUS_UNKNOWN_LOCATIONS", "true")
     focus_unknown = focus_unknown_str.lower() in ("true", "1", "yes")
 
     # Get HA token - prefer SUPERVISOR_TOKEN (automatic when homeassistant_api: true)
-    # Fall back to user-provided HA_TOKEN
     ha_token = os.environ.get("SUPERVISOR_TOKEN", "") or os.environ.get("HA_TOKEN", "")
     
     config = {
         "ha_url": os.environ.get("HA_URL", "http://supervisor/core"),
         "ha_token": ha_token,
-        "check_interval": int(os.environ.get("CHECK_INTERVAL", "30")),
-        "devices": devices,
-        "influxdb_host": os.environ.get("INFLUXDB_HOST", "a0d7b954_influxdb"),
+        "default_interval": int(os.environ.get("DEFAULT_INTERVAL", "5")),
+        "tracked_devices": tracked_devices,
+        "influxdb_host": os.environ.get("INFLUXDB_HOST", "a0d7b954-influxdb"),
         "influxdb_port": int(os.environ.get("INFLUXDB_PORT", "8086")),
         "influxdb_database": os.environ.get("INFLUXDB_DATABASE", "find_my_history"),
         "influxdb_username": os.environ.get("INFLUXDB_USERNAME", "admin"),
@@ -55,15 +74,15 @@ def load_config() -> Dict:
         "api_port": int(os.environ.get("API_PORT", "8090")),
     }
 
-    # Validate required config - with homeassistant_api: true, SUPERVISOR_TOKEN is auto-provided
+    # Validate required config
     if not config["ha_token"]:
         _LOGGER.error("No HA token available. Either set ha_token in config or enable homeassistant_api.")
         sys.exit(1)
     
     _LOGGER.info(f"Using {'Supervisor' if os.environ.get('SUPERVISOR_TOKEN') else 'user-provided'} token for HA API")
 
-    if not config["devices"]:
-        _LOGGER.warning("No devices configured. Add device_tracker entity IDs to 'devices' option.")
+    if not config["tracked_devices"]:
+        _LOGGER.warning("No devices configured. Add devices in the add-on configuration.")
 
     return config
 
@@ -211,7 +230,11 @@ def main():
 
     # Load configuration
     config = load_config()
-    _LOGGER.info(f"Configuration loaded: {len(config['devices'])} devices configured")
+    tracked_devices = config["tracked_devices"]
+    _LOGGER.info(f"Configuration loaded: {len(tracked_devices)} devices configured")
+    
+    for dev in tracked_devices:
+        _LOGGER.info(f"  - {dev['entity_id']}: every {dev.get('interval_minutes', 5)} minutes")
 
     # Initialize clients
     ha_client = HomeAssistantClient(config["ha_url"], config["ha_token"])
@@ -235,38 +258,52 @@ def main():
     api_thread.start()
     _LOGGER.info(f"API server started on port {api_port}")
 
-    # Main polling loop
-    check_interval = config["check_interval"] * 60  # Convert to seconds
-    _LOGGER.info(f"Starting polling loop (interval: {config['check_interval']} minutes)")
+    # Track last poll time for each device
+    last_poll_times: Dict[str, float] = {}
+    zone_refresh_counter = 0
+    
+    # Base check interval (1 minute) - check if any device needs updating
+    base_interval = 60
+    _LOGGER.info("Starting polling loop with per-device intervals")
 
     try:
         while True:
-            # Refresh zones periodically (every 10 cycles)
-            # This allows zones to be updated without restarting
-            if not hasattr(main, "zone_refresh_counter"):
-                main.zone_refresh_counter = 0
-
-            main.zone_refresh_counter += 1
-            if main.zone_refresh_counter >= 10:
+            current_time = time.time()
+            
+            # Refresh zones periodically (every 10 base cycles = 10 minutes)
+            zone_refresh_counter += 1
+            if zone_refresh_counter >= 10:
                 zones = ha_client.get_zones()
                 zone_detector.update_zones(zones)
-                main.zone_refresh_counter = 0
+                zone_refresh_counter = 0
 
-            # Poll devices
-            if config["devices"]:
+            # Check each device if it needs to be polled
+            devices_to_poll = []
+            for dev in tracked_devices:
+                entity_id = dev["entity_id"]
+                interval_seconds = dev.get("interval_minutes", 5) * 60
+                last_poll = last_poll_times.get(entity_id, 0)
+                
+                if current_time - last_poll >= interval_seconds:
+                    devices_to_poll.append(entity_id)
+                    last_poll_times[entity_id] = current_time
+
+            # Poll devices that need updating
+            if devices_to_poll:
+                _LOGGER.info(f"Polling {len(devices_to_poll)} devices...")
                 poll_devices(
                     ha_client,
                     zone_detector,
                     influx_client,
-                    config["devices"],
+                    devices_to_poll,
                     config["focus_unknown_locations"]
                 )
-            else:
-                _LOGGER.warning("No devices configured. Waiting...")
+            
+            if not tracked_devices:
+                _LOGGER.warning("No devices configured. Add devices in the add-on configuration.")
 
-            # Sleep until next poll
-            _LOGGER.debug(f"Sleeping for {check_interval} seconds...")
-            time.sleep(check_interval)
+            # Sleep for base interval
+            time.sleep(base_interval)
 
     except KeyboardInterrupt:
         _LOGGER.info("Received interrupt signal, shutting down...")
