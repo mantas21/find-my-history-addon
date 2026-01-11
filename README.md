@@ -66,7 +66,7 @@ influxdb_password: "YOUR_INFLUXDB_PASSWORD"
 | `influxdb_username` | string | `admin` | InfluxDB username |
 | `influxdb_password` | string | *required* | InfluxDB password |
 | `focus_unknown_locations` | bool | `true` | Highlight unknown locations |
-| `api_port` | int | `8080` | API server port |
+| `api_port` | int | `8090` | API server port |
 
 ## Prerequisites
 
