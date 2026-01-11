@@ -541,6 +541,10 @@
             gap: 2px;
         }
         
+        .time-slider-wrapper {
+            position: relative;
+        }
+        
         .time-slider-wrapper input[type="range"] {
             width: 100%;
             height: 4px;
@@ -548,16 +552,52 @@
             background: var(--apple-gray4);
             border-radius: 2px;
             outline: none;
+            position: relative;
+            z-index: 2;
+        }
+        
+        /* Progress track (colored portion) */
+        .time-slider-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+            height: 4px;
+            width: var(--progress, 0%);
+            background: var(--apple-blue);
+            border-radius: 2px;
+            z-index: 1;
+            transition: width 0.1s ease;
+        }
+        
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 4px rgba(0,122,255,0.3), 0 2px 8px rgba(0,0,0,0.5); }
+            50% { box-shadow: 0 0 0 8px rgba(0,122,255,0.1), 0 2px 8px rgba(0,0,0,0.5); }
+            100% { box-shadow: 0 0 0 4px rgba(0,122,255,0.3), 0 2px 8px rgba(0,0,0,0.5); }
         }
         
         .time-slider-wrapper input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
             background: white;
             border-radius: 50%;
             cursor: pointer;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            border: 2px solid var(--apple-blue);
+            position: relative;
+            z-index: 3;
+        }
+        
+        .time-slider-wrapper input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            border: 2px solid var(--apple-blue);
         }
         
         .time-markers {
@@ -570,18 +610,21 @@
         .time-display {
             text-align: right;
             flex-shrink: 0;
-            min-width: 100px;
+            min-width: 120px;
         }
         
         .time-current {
             font-size: var(--font-size-footnote);
             font-weight: 500;
             display: block;
+            white-space: nowrap;
         }
         
         .time-points {
             font-size: var(--font-size-caption2);
             color: var(--text-secondary);
+            display: block;
+            margin-top: 2px;
         }
         
         /* ===== MINIMAL MAP POPUP ===== */
@@ -1371,7 +1414,9 @@
                 if (locations.length === 0) return;
                 currentIndex = Math.floor((e.target.value / 100) * Math.max(locations.length - 1, 0));
                 updateCurrentMarker();
+                updateAllMarkers(); // Re-render to hide/show correct marker
                 renderDetails();
+                updateSliderProgress();
             });
             
             loadDevices();
@@ -1441,8 +1486,10 @@
                         return;
                     }
                     document.getElementById('time-slider').value = (currentIndex / (locations.length - 1)) * 100;
+                    updateAllMarkers();
                     updateCurrentMarker();
                     renderDetails();
+                    updateSliderProgress();
                 }, 500);
             } else {
                 clearInterval(playInterval);
@@ -1521,11 +1568,12 @@
                 document.getElementById('time-end').textContent = new Date(locations[locations.length - 1].time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
                 
                 updatePath();
-                updateAllMarkers();
                 currentIndex = locations.length - 1;
                 document.getElementById('time-slider').value = 100;
+                updateAllMarkers(); // Must be called before updateCurrentMarker
                 updateCurrentMarker();
                 renderDetails();
+                updateSliderProgress();
                 
                 if (document.getElementById('heatmap-toggle').checked) {
                     updateHeatmap();
@@ -1560,12 +1608,15 @@
             allMarkersLayer.clearLayers();
             
             locations.forEach((loc, index) => {
-                const color = loc.in_zone ? '#34C759' : '#FF3B30';
+                // Skip the current marker - it will be shown separately with different styling
+                if (index === currentIndex) return;
+                
+                // Past markers: grey/faded, smaller
                 const icon = L.divIcon({
                     className: 'small-marker',
-                    html: `<div style="background:${color}; width:8px; height:8px; border-radius:50%; border:1px solid white; opacity:0.7;"></div>`,
-                    iconSize: [8, 8],
-                    iconAnchor: [4, 4]
+                    html: `<div style="background:#636366; width:6px; height:6px; border-radius:50%; border:1px solid rgba(255,255,255,0.3); opacity:0.6;"></div>`,
+                    iconSize: [6, 6],
+                    iconAnchor: [3, 3]
                 });
                 
                 const marker = L.marker([loc.latitude, loc.longitude], { icon }).addTo(allMarkersLayer);
@@ -1578,8 +1629,10 @@
                 marker.on('click', () => {
                     currentIndex = index;
                     document.getElementById('time-slider').value = (index / Math.max(locations.length - 1, 1)) * 100;
+                    updateAllMarkers(); // Re-render to update which marker is hidden
                     updateCurrentMarker();
                     renderDetails();
+                    updateSliderProgress();
                 });
             });
         }
@@ -1589,19 +1642,37 @@
             if (locations.length === 0) return;
             
             const loc = locations[currentIndex];
-            const color = loc.in_zone ? '#34C759' : '#FF3B30';
             
+            // Current marker: Always blue, larger, with pulsing animation
             const icon = L.divIcon({
                 className: 'current-marker',
-                html: `<div style="background:${color}; width:20px; height:20px; border-radius:50%; border:3px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.5);"></div>`,
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
+                html: `<div style="background:#007AFF; width:24px; height:24px; border-radius:50%; border:4px solid white; box-shadow:0 0 0 4px rgba(0,122,255,0.3), 0 2px 8px rgba(0,0,0,0.5); animation: pulse-ring 2s infinite;"></div>`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
             });
             
-            L.marker([loc.latitude, loc.longitude], { icon }).addTo(markerLayer);
+            const marker = L.marker([loc.latitude, loc.longitude], { icon, zIndexOffset: 1000 }).addTo(markerLayer);
+            
+            // Minimal popup for current marker
+            const deviceName = loc.device_name || 'Device';
+            const timeAgo = formatRelativeTime(loc.time);
+            marker.bindPopup(`<div class="findmy-popup"><div class="popup-title">${deviceName}</div><div class="popup-subtitle">${timeAgo}</div></div>`, { maxWidth: 150 });
             
             // Update time display
             document.getElementById('time-current').textContent = formatTimestamp(loc.time);
+            
+            // Update slider progress indicator
+            updateSliderProgress();
+        }
+        
+        function updateSliderProgress() {
+            if (locations.length === 0) return;
+            const slider = document.getElementById('time-slider');
+            const wrapper = slider.closest('.time-slider-wrapper');
+            const percentage = (slider.value / slider.max) * 100;
+            if (wrapper) {
+                wrapper.style.setProperty('--progress', `${percentage}%`);
+            }
         }
         
         // ===== TRACKING & UPDATE =====
