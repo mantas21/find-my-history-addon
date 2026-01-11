@@ -544,6 +544,8 @@
         let isPlaying = false;
         let playInterval = null;
         let moreDevicesExpanded = false;
+        let baseLayers = {};
+        let layerControl = null;
         
         // ===== Helper Functions for Enhanced Popups =====
         
@@ -979,9 +981,49 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             map = L.map('map').setView([54.9, 23.9], 10);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap'
-            }).addTo(map);
+            
+            // Define base layers
+            baseLayers = {
+                'Street Map': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap',
+                    maxZoom: 19
+                }),
+                'Satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: '© Esri, Maxar, Earthstar Geographics',
+                    maxZoom: 18
+                }),
+                'Satellite + Labels': L.layerGroup([
+                    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                        attribution: '© Esri',
+                        maxZoom: 18
+                    }),
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '',
+                        maxZoom: 19,
+                        opacity: 0.4
+                    })
+                ]),
+                'Terrain': L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenTopoMap',
+                    maxZoom: 17
+                }),
+                'Dark': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '© CartoDB',
+                    maxZoom: 19
+                })
+            };
+            
+            // Add default layer
+            const savedLayer = localStorage.getItem('preferredMapLayer') || 'Street Map';
+            (baseLayers[savedLayer] || baseLayers['Street Map']).addTo(map);
+            
+            // Add layer control
+            layerControl = L.control.layers(baseLayers, {}, { position: 'topright' }).addTo(map);
+            
+            // Save layer preference when changed
+            map.on('baselayerchange', function(e) {
+                localStorage.setItem('preferredMapLayer', e.name);
+            });
             
             pathLayer = L.layerGroup().addTo(map);
             allMarkersLayer = L.layerGroup().addTo(map);
@@ -1351,8 +1393,12 @@
                 const marker = L.marker([loc.latitude, loc.longitude], { icon })
                     .addTo(allMarkersLayer);
                 
-                // Create initial popup with loading state
-                const popup = L.popup().setContent(createPopupContent(loc, index, null));
+                // Create initial popup with loading state - offset to side so it doesn't cover path
+                const popup = L.popup({
+                    offset: [120, 0],
+                    autoPan: true,
+                    autoPanPadding: [50, 50]
+                }).setContent(createPopupContent(loc, index, null));
                 marker.bindPopup(popup);
                 
                 // Load place name when popup opens
@@ -1387,8 +1433,13 @@
             const marker = L.marker([loc.latitude, loc.longitude], { icon })
                 .addTo(markerLayer);
             
-            // Create popup with initial loading state
-            const popup = L.popup({ maxWidth: 280 }).setContent(createPopupContent(loc, idx, null));
+            // Create popup with initial loading state - offset to side so it doesn't cover path
+            const popup = L.popup({ 
+                maxWidth: 280,
+                offset: [120, 0],
+                autoPan: true,
+                autoPanPadding: [50, 50]
+            }).setContent(createPopupContent(loc, idx, null));
             marker.bindPopup(popup).openPopup();
             
             // Load place name asynchronously
