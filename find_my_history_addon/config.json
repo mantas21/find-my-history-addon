@@ -1,6 +1,6 @@
 {
   "name": "Find My Location History",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "slug": "find_my_history",
   "description": "Record and visualize device location history from iCloud integration with focus on unknown locations",
   "arch": ["amd64", "armhf", "armv7", "aarch64", "i386"],
@@ -18,7 +18,7 @@
     "ha_token": "",
     "check_interval": 30,
     "devices": [],
-    "influxdb_host": "a0d7b954_influxdb",
+    "influxdb_host": "a0d7b954-influxdb",
     "influxdb_port": 8086,
     "influxdb_database": "find_my_history",
     "influxdb_username": "admin",
