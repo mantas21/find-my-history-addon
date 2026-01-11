@@ -15,12 +15,10 @@ from find_my_history.zone_detector import ZoneDetector
 from find_my_history.influxdb_client import InfluxDBLocationClient
 from find_my_history.api import LocationHistoryAPI
 from find_my_history.device_prefs import get_device_prefs
+from find_my_history.log_utils import format_coordinates, setup_secure_logging
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
-)
+# Configure secure logging
+setup_secure_logging(level=logging.INFO)
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -117,10 +115,12 @@ def extract_location_data(entity_state: Dict) -> Optional[Dict]:
                 latitude = float(parts[0].strip())
                 longitude = float(parts[1].strip())
             except (ValueError, IndexError):
-                _LOGGER.debug(f"Could not parse location from state: {state}")
+                # Don't log the state value as it may contain sensitive location data
+                _LOGGER.debug(f"Could not parse location from entity state")
                 return None
         else:
-            _LOGGER.debug(f"Entity {entity_state.get('entity_id')} has no location data")
+            entity_id = entity_state.get('entity_id', 'unknown')
+            _LOGGER.debug(f"Entity {entity_id} has no location data")
             return None
 
     # Use current time for poll timestamp (not entity's last_updated)
@@ -197,9 +197,14 @@ def poll_devices(
 
             if success:
                 status = f"in zone '{zone_name}'" if in_zone else "unknown location"
+                coords = format_coordinates(
+                    location_data['latitude'],
+                    location_data['longitude'],
+                    precision=4
+                )
                 _LOGGER.info(
                     f"Stored location for {device_id} ({device_name}): "
-                    f"({location_data['latitude']:.4f}, {location_data['longitude']:.4f}) - {status}"
+                    f"{coords} - {status}"
                 )
             else:
                 _LOGGER.error(f"Failed to store location for {device_id}")
@@ -253,7 +258,7 @@ def main():
                 else:
                     # Update interval from config
                     prefs.set_interval(entity_id, interval)
-                    _LOGGER.info(f"Updated interval from config: {entity_id} -> {interval}m")
+                    _LOGGER.debug(f"Updated interval from config: {entity_id} -> {interval}m")
     
     # Log current tracked devices
     tracked = prefs.get_tracked_with_intervals()

@@ -4,6 +4,8 @@ import logging
 import math
 from typing import Dict, List, Optional, Tuple
 
+from find_my_history.log_utils import format_coordinates
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -24,7 +26,8 @@ class ZoneDetector:
             lat = zone.get("latitude")
             lon = zone.get("longitude")
             radius = zone.get("radius", 100)
-            _LOGGER.info(f"  Zone: {name} @ ({lat}, {lon}) radius={radius}m")
+            coords = format_coordinates(lat, lon, precision=5)
+            _LOGGER.info(f"  Zone: {name} @ {coords} radius={radius}m")
 
     def _calculate_distance(
         self, lat1: float, lon1: float, lat2: float, lon2: float
@@ -86,7 +89,7 @@ class ZoneDetector:
                 zone_radius = float(zone_radius_raw) if zone_radius_raw else 100.0
 
             if zone_lat is None or zone_lon is None:
-                _LOGGER.warning(f"Zone {zone_name} has no coordinates, skipping")
+                _LOGGER.warning(f"Zone '{zone_name}' has no coordinates, skipping")
                 continue
 
             # Calculate distance from device to zone center
@@ -94,6 +97,7 @@ class ZoneDetector:
                 latitude, longitude, zone_lat, zone_lon
             )
 
+            # Log zone check without exposing exact coordinates
             _LOGGER.debug(
                 f"Zone '{zone_name}': distance={distance:.1f}m, radius={zone_radius}m"
             )
@@ -105,14 +109,16 @@ class ZoneDetector:
 
             # Check if within zone radius
             if distance <= zone_radius:
+                coords = format_coordinates(latitude, longitude, precision=5)
                 _LOGGER.info(
-                    f"Device at ({latitude:.5f}, {longitude:.5f}) is in zone "
+                    f"Device at {coords} is in zone "
                     f"'{zone_name}' (distance: {distance:.1f}m, radius: {zone_radius}m)"
                 )
                 return True, zone_name
 
+        coords = format_coordinates(latitude, longitude, precision=5)
         _LOGGER.info(
-            f"Device at ({latitude:.5f}, {longitude:.5f}) is not in any zone. "
+            f"Device at {coords} is not in any zone. "
             f"Closest: '{closest_zone}' at {closest_distance:.1f}m"
         )
         return False, None

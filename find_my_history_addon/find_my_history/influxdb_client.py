@@ -6,6 +6,8 @@ from typing import Dict, Optional, List
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 
+from find_my_history.log_utils import format_coordinates
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -124,9 +126,9 @@ class InfluxDBLocationClient:
                 point = point.field("battery_state", battery_state)
 
             self.write_api.write(bucket=self.bucket, record=point)
+            coords = format_coordinates(latitude, longitude, precision=5)
             _LOGGER.debug(
-                f"Wrote location for {device_id} at "
-                f"({latitude}, {longitude})"
+                f"Wrote location for {device_id} at {coords}"
             )
             return True
 
