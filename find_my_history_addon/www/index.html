@@ -1102,12 +1102,81 @@
         }
         
         function calculateDuration(locs, idx) {
+            // #region agent log
+            const logData = {idx,locationsCount:locs.length,currentTime:locs[idx]?.time,currentLat:locs[idx]?.latitude,currentLng:locs[idx]?.longitude};
+            console.log('[DEBUG] calculateDuration entry', logData);
+            fetch('http://127.0.0.1:7242/ingest/f7828cb4-5ba9-4587-93c9-58ff61117a46',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1104',message:'calculateDuration entry',data:logData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(e=>console.error('[DEBUG] Log fetch failed',e));
+            // #endregion
             const current = locs[idx];
             const RADIUS = 100;
             let startIndex = idx, endIndex = idx;
-            while (startIndex > 0 && getDistance(current, locs[startIndex - 1]) <= RADIUS) startIndex--;
-            while (endIndex < locs.length - 1 && getDistance(current, locs[endIndex + 1]) <= RADIUS) endIndex++;
-            return new Date(locs[endIndex].time) - new Date(locs[startIndex].time);
+            // #region agent log
+            const beforeSearch = {startIndex,endIndex,RADIUS};
+            console.log('[DEBUG] Before clustering search', beforeSearch);
+            fetch('http://127.0.0.1:7242/ingest/f7828cb4-5ba9-4587-93c9-58ff61117a46',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1108',message:'Before clustering search',data:beforeSearch,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(e=>console.error('[DEBUG] Log fetch failed',e));
+            // #endregion
+            while (startIndex > 0 && getDistance(current, locs[startIndex - 1]) <= RADIUS) {
+                const dist = getDistance(current, locs[startIndex - 1]);
+                // #region agent log
+                const backwardStep = {startIndex,prevIndex:startIndex-1,distance:dist,withinRadius:dist<=RADIUS,prevTime:locs[startIndex-1]?.time};
+                console.log('[DEBUG] Backward search step', backwardStep);
+                fetch('http://127.0.0.1:7242/ingest/f7828cb4-5ba9-4587-93c9-58ff61117a46',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1110',message:'Backward search step',data:backwardStep,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(e=>console.error('[DEBUG] Log fetch failed',e));
+                // #endregion
+                startIndex--;
+            }
+            while (endIndex < locs.length - 1 && getDistance(current, locs[endIndex + 1]) <= RADIUS) {
+                const dist = getDistance(current, locs[endIndex + 1]);
+                // #region agent log
+                const forwardStep = {endIndex,nextIndex:endIndex+1,distance:dist,withinRadius:dist<=RADIUS,nextTime:locs[endIndex+1]?.time};
+                console.log('[DEBUG] Forward search step', forwardStep);
+                fetch('http://127.0.0.1:7242/ingest/f7828cb4-5ba9-4587-93c9-58ff61117a46',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1114',message:'Forward search step',data:forwardStep,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(e=>console.error('[DEBUG] Log fetch failed',e));
+                // #endregion
+                endIndex++;
+            }
+            // #region agent log
+            const afterSearch = {startIndex,endIndex,clusterSize:endIndex-startIndex+1,startTime:locs[startIndex]?.time,endTime:locs[endIndex]?.time};
+            console.log('[DEBUG] After clustering search', afterSearch);
+            fetch('http://127.0.0.1:7242/ingest/f7828cb4-5ba9-4587-93c9-58ff61117a46',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1118',message:'After clustering search',data:afterSearch,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(e=>console.error('[DEBUG] Log fetch failed',e));
+            // #endregion
+            const startTime = new Date(locs[startIndex].time);
+            let endTime = new Date(locs[endIndex].time);
+            
+            // Extend duration to the next location outside the radius (or to now if it's the most recent)
+            // This accounts for the actual time spent at the location, not just between location updates
+            if (endIndex < locs.length - 1) {
+                const nextLocation = locs[endIndex + 1];
+                const distanceToNext = getDistance(current, nextLocation);
+                const timeToNext = new Date(nextLocation.time) - endTime;
+                const MAX_GAP = 30 * 60 * 1000; // 30 minutes max gap
+                
+                // If next location is far away and gap is reasonable, device was still at this location until it moved
+                if (distanceToNext > RADIUS && timeToNext <= MAX_GAP) {
+                    endTime = new Date(nextLocation.time);
+                }
+            } else {
+                // If this is the most recent location, extend to now (but cap at reasonable time)
+                const timeSinceLastUpdate = Date.now() - endTime.getTime();
+                const MAX_RECENT_GAP = 2 * 60 * 60 * 1000; // 2 hours max for "now"
+                if (timeSinceLastUpdate <= MAX_RECENT_GAP) {
+                    endTime = new Date();
+                }
+            }
+            
+            const duration = endTime - startTime;
+            // #region agent log
+            const result = {startTime:startTime.toISOString(),endTime:endTime.toISOString(),durationMs:duration,durationMinutes:duration/60000,formatted:formatDuration(duration),sameIndex:startIndex===endIndex,extended:endTime > new Date(locs[endIndex].time)};
+            console.log('[DEBUG] Duration calculation result', result);
+            fetch('http://127.0.0.1:7242/ingest/f7828cb4-5ba9-4587-93c9-58ff61117a46',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1123',message:'Duration calculation result',data:result,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(e=>console.error('[DEBUG] Log fetch failed',e));
+            // #endregion
+            // #region agent log
+            if (locs.length > 1) {
+                const sampleTimes = locs.slice(Math.max(0,idx-2),Math.min(locs.length,idx+3)).map((l,i) => ({index:Math.max(0,idx-2)+i,time:l.time,lat:l.latitude,lng:l.longitude}));
+                const sortedCheck = {sampleTimes,isSorted:locs.every((l,i)=>i===0||new Date(l.time)>=new Date(locs[i-1].time))};
+                console.log('[DEBUG] Sample locations around index', sortedCheck);
+                fetch('http://127.0.0.1:7242/ingest/f7828cb4-5ba9-4587-93c9-58ff61117a46',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1127',message:'Sample locations around index',data:sortedCheck,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(e=>console.error('[DEBUG] Log fetch failed',e));
+            }
+            // #endregion
+            return duration;
         }
         
         function findPreviousStableLocation(locs, idx) {
