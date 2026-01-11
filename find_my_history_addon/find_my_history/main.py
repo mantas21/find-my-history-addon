@@ -235,15 +235,29 @@ def main():
     # Initialize device preferences (persistent storage)
     prefs = get_device_prefs()
     
-    # If config has devices and prefs is empty, initialize prefs from config
+    # Sync devices from add-on config to preferences
+    # Config is the source of truth for intervals, UI manages which devices are tracked
     config_devices = config.get("tracked_devices", [])
-    if config_devices and not prefs.get_tracked_devices():
-        _LOGGER.info("Initializing device preferences from add-on config...")
+    if config_devices:
+        existing_tracked = prefs.get_tracked_devices()
+        
         for dev in config_devices:
             entity_id = dev.get("entity_id")
             interval = dev.get("interval_minutes", 5)
-            if entity_id:
-                prefs.add_device(entity_id, interval)
+            enabled = dev.get("enabled", True)
+            
+            if not entity_id or "example" in entity_id:
+                continue
+                
+            if enabled:
+                if entity_id not in existing_tracked:
+                    # Add new device from config
+                    prefs.add_device(entity_id, interval)
+                    _LOGGER.info(f"Added device from config: {entity_id} (interval: {interval}m)")
+                else:
+                    # Update interval from config
+                    prefs.set_interval(entity_id, interval)
+                    _LOGGER.info(f"Updated interval from config: {entity_id} -> {interval}m")
     
     # Log current tracked devices
     tracked = prefs.get_tracked_with_intervals()
