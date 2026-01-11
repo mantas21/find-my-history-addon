@@ -84,7 +84,7 @@ class InfluxDBLocationClient:
         Write location data point to InfluxDB.
 
         Args:
-            device_id: Entity ID (e.g., device_tracker.mantas_s_iphone)
+            device_id: Entity ID (e.g., device_tracker.my_iphone)
             device_name: Friendly device name
             latitude: Device latitude
             longitude: Device longitude

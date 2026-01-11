@@ -43,7 +43,7 @@ class HomeAssistantClient:
         Get state of a device_tracker entity.
 
         Args:
-            entity_id: Entity ID (e.g., device_tracker.mantas_s_iphone)
+            entity_id: Entity ID (e.g., device_tracker.my_iphone)
 
         Returns:
             Entity state dict or None if error
