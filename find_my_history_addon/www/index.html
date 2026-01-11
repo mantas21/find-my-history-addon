@@ -670,9 +670,57 @@
             return null;
         }
         
-        // Nominatim reverse geocoding (free, no API key needed)
+        // Nominatim reverse geocoding + Overpass for nearby POIs (free, no API key needed)
         let nominatimQueue = [];
         let nominatimProcessing = false;
+        
+        // Search for nearby POIs using Overpass API
+        async function searchNearbyPOIs(lat, lng, radiusMeters = 30) {
+            const query = `
+                [out:json][timeout:5];
+                (
+                    node["name"](around:${radiusMeters},${lat},${lng});
+                    way["name"]["building"](around:${radiusMeters},${lat},${lng});
+                    node["amenity"](around:${radiusMeters},${lat},${lng});
+                    node["shop"](around:${radiusMeters},${lat},${lng});
+                    node["tourism"](around:${radiusMeters},${lat},${lng});
+                    node["leisure"](around:${radiusMeters},${lat},${lng});
+                );
+                out body 1;
+            `.trim();
+            
+            try {
+                const response = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: query
+                });
+                const data = await response.json();
+                
+                if (data.elements && data.elements.length > 0) {
+                    // Find the best result (prefer ones with names and specific types)
+                    const scored = data.elements.map(el => {
+                        const tags = el.tags || {};
+                        let score = 0;
+                        if (tags.name) score += 10;
+                        if (tags.amenity) score += 5;
+                        if (tags.shop) score += 5;
+                        if (tags.tourism) score += 4;
+                        if (tags.leisure) score += 3;
+                        // Exclude generic things like parking, etc.
+                        if (tags.amenity === 'parking' || tags.amenity === 'bench') score -= 10;
+                        return { el, score, name: tags.name };
+                    }).filter(x => x.name && x.score > 0)
+                      .sort((a, b) => b.score - a.score);
+                    
+                    if (scored.length > 0) {
+                        return scored[0].name;
+                    }
+                }
+                return null;
+            } catch (error) {
+                return null;
+            }
+        }
         
         async function processNominatimQueue() {
             if (nominatimProcessing || nominatimQueue.length === 0) return;
@@ -681,27 +729,72 @@
             const { lat, lng, resolve } = nominatimQueue.shift();
             
             try {
-                const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&zoom=18`;
-                const response = await fetch(url, {
-                    headers: { 'User-Agent': 'FindMyHistory/1.0' }
-                });
-                const data = await response.json();
+                // Run both queries in parallel: Nominatim for address + Overpass for nearby POIs
+                const [nominatimResult, nearbyPOI] = await Promise.all([
+                    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&extratags=1&zoom=18`, {
+                        headers: { 'User-Agent': 'FindMyHistory/1.0' }
+                    }).then(r => r.json()).catch(() => ({})),
+                    searchNearbyPOIs(lat, lng, 30)
+                ]);
                 
-                const name = data.name || 
-                             data.address?.amenity || 
-                             data.address?.shop ||
-                             data.address?.tourism ||
-                             data.address?.building;
+                const data = nominatimResult;
+                const addr = data.address || {};
                 
-                const road = data.address?.road || data.address?.street;
-                const houseNumber = data.address?.house_number;
+                // Try to get a meaningful POI/business name from Nominatim
+                const nominatimPOI = data.name || 
+                               addr.amenity || 
+                               addr.shop ||
+                               addr.office ||
+                               addr.leisure ||
+                               addr.tourism ||
+                               addr.craft ||
+                               addr.healthcare ||
+                               addr.club;
+                
+                // Build street address
+                const road = addr.road || addr.street || addr.path || addr.pedestrian;
+                const houseNumber = addr.house_number;
                 const streetAddr = houseNumber && road ? `${road} ${houseNumber}` : road;
                 
-                resolve({
-                    primary: name || streetAddr || 'Unknown location',
-                    secondary: name && streetAddr ? streetAddr : null,
-                    icon: '📍'
-                });
+                // Build area/city info for context
+                const area = addr.suburb || addr.neighbourhood || addr.district || addr.city_district;
+                const city = addr.city || addr.town || addr.village || addr.municipality;
+                const areaInfo = [area, city].filter(Boolean).join(', ');
+                
+                // Use nearby POI from Overpass if found, otherwise fall back to Nominatim POI
+                const businessName = nearbyPOI || (nominatimPOI && nominatimPOI !== road ? nominatimPOI : null);
+                
+                let result;
+                if (businessName) {
+                    // We have a business/POI name - show it with street as secondary
+                    result = {
+                        primary: businessName,
+                        secondary: streetAddr || areaInfo || null,
+                        icon: '📍'
+                    };
+                } else if (streetAddr) {
+                    // No POI, but we have a street - show it with area as secondary
+                    result = {
+                        primary: streetAddr,
+                        secondary: areaInfo || null,
+                        icon: '📍'
+                    };
+                } else if (areaInfo) {
+                    // Just area info
+                    result = {
+                        primary: areaInfo,
+                        secondary: null,
+                        icon: '📍'
+                    };
+                } else {
+                    result = {
+                        primary: 'Unknown location',
+                        secondary: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+                        icon: '📍'
+                    };
+                }
+                
+                resolve(result);
             } catch (error) {
                 resolve(null);
             }
