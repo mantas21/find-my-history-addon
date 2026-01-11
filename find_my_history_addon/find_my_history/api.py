@@ -1,6 +1,7 @@
 """HTTP API server for Lovelace card backend."""
 
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from aiohttp import web
@@ -10,6 +11,9 @@ from find_my_history.ha_client import HomeAssistantClient
 from find_my_history.influxdb_client import InfluxDBLocationClient
 
 _LOGGER = logging.getLogger(__name__)
+
+# Path to static files
+STATIC_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'www')
 
 
 class LocationHistoryAPI:
@@ -50,20 +54,37 @@ class LocationHistoryAPI:
             }
         )
 
-        # Routes
+        # API Routes
         self.app.router.add_get("/api/locations", self.get_locations)
         self.app.router.add_get("/api/zones", self.get_zones)
         self.app.router.add_get("/api/devices", self.get_devices)
         self.app.router.add_get("/api/stats", self.get_stats)
         self.app.router.add_get("/health", self.health_check)
+        
+        # Static files and index page
+        self.app.router.add_get("/", self.serve_index)
+        self.app.router.add_static("/static", STATIC_PATH)
 
         # Enable CORS for all routes
         for route in list(self.app.router.routes()):
-            cors.add(route)
+            try:
+                cors.add(route)
+            except ValueError:
+                pass  # Static routes don't need CORS
 
     async def health_check(self, request: web.Request) -> web.Response:
         """Health check endpoint."""
         return web.json_response({"status": "ok"})
+
+    async def serve_index(self, request: web.Request) -> web.Response:
+        """Serve the main HTML page."""
+        index_path = os.path.join(STATIC_PATH, 'index.html')
+        if os.path.exists(index_path):
+            return web.FileResponse(index_path)
+        return web.Response(
+            text="<html><body><h1>Find My Location History</h1><p>API is running. Access /api/health for status.</p></body></html>",
+            content_type='text/html'
+        )
 
     async def get_locations(self, request: web.Request) -> web.Response:
         """

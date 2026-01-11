@@ -1,6 +1,6 @@
 {
   "name": "Find My Location History",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "slug": "find_my_history",
   "description": "Record and visualize device location history from iCloud integration with focus on unknown locations",
   "arch": ["amd64", "armhf", "armv7", "aarch64", "i386"],
@@ -9,6 +9,10 @@
   "init": false,
   "homeassistant_api": true,
   "hassio_api": true,
+  "ingress": true,
+  "ingress_port": 8090,
+  "panel_icon": "mdi:map-marker-path",
+  "panel_title": "Location History",
   "options": {
     "ha_url": "http://supervisor/core",
     "ha_token": "",

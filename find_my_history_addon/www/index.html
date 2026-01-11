@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find My Location History</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #1c1c1c;
+            color: #e1e1e1;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        h1::before {
+            content: "📍";
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        select, button {
+            padding: 10px 15px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background: #2a2a2a;
+            color: #e1e1e1;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        select:hover, button:hover {
+            background: #3a3a3a;
+        }
+        button.primary {
+            background: #0d6efd;
+            border-color: #0d6efd;
+        }
+        button.primary:hover {
+            background: #0b5ed7;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #0d6efd;
+        }
+        .stat-label {
+            font-size: 0.85rem;
+            color: #888;
+            margin-top: 5px;
+        }
+        .stat-card.warning .stat-value {
+            color: #ffc107;
+        }
+        .stat-card.danger .stat-value {
+            color: #dc3545;
+        }
+        .stat-card.success .stat-value {
+            color: #198754;
+        }
+        #map {
+            width: 100%;
+            height: 500px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #888;
+        }
+        .error {
+            background: #dc3545;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .time-slider-container {
+            margin: 20px 0;
+            padding: 15px;
+            background: #2a2a2a;
+            border-radius: 10px;
+        }
+        .time-slider-container label {
+            display: block;
+            margin-bottom: 10px;
+            color: #888;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            background: #444;
+            border-radius: 3px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #0d6efd;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        #current-time {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 1.1rem;
+        }
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .legend-dot.known { background: #198754; }
+        .legend-dot.unknown { background: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Find My Location History</h1>
+        
+        <div class="controls">
+            <select id="device-select">
+                <option value="">Select a device...</option>
+            </select>
+            <select id="time-range">
+                <option value="1h">Last 1 hour</option>
+                <option value="6h">Last 6 hours</option>
+                <option value="24h" selected>Last 24 hours</option>
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+            </select>
+            <button class="primary" onclick="loadData()">Refresh</button>
+        </div>
+
+        <div id="error-container"></div>
+        
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="total-points">-</div>
+                <div class="stat-label">Total Points</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-value" id="known-locations">-</div>
+                <div class="stat-label">Known Locations</div>
+            </div>
+            <div class="stat-card danger">
+                <div class="stat-value" id="unknown-locations">-</div>
+                <div class="stat-label">Unknown Locations</div>
+            </div>
+        </div>
+
+        <div id="map"></div>
+
+        <div class="time-slider-container">
+            <label>Time Navigation</label>
+            <input type="range" id="time-slider" min="0" max="100" value="100">
+            <div id="current-time">Current time will appear here</div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-dot known"></div>
+                <span>Known Zone</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot unknown"></div>
+                <span>Unknown Location</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let map;
+        let pathLayer;
+        let markerLayer;
+        let locations = [];
+        let currentIndex = 0;
+
+        // Initialize map
+        document.addEventListener('DOMContentLoaded', function() {
+            map = L.map('map').setView([54.9, 23.9], 10); // Default to Lithuania
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+            
+            pathLayer = L.layerGroup().addTo(map);
+            markerLayer = L.layerGroup().addTo(map);
+            
+            loadDevices();
+            
+            // Time slider
+            document.getElementById('time-slider').addEventListener('input', function(e) {
+                if (locations.length === 0) return;
+                currentIndex = Math.floor((e.target.value / 100) * (locations.length - 1));
+                updateMarker();
+            });
+        });
+
+        async function loadDevices() {
+            try {
+                const response = await fetch('/api/devices');
+                const data = await response.json();
+                
+                const select = document.getElementById('device-select');
+                if (data.devices && data.devices.length > 0) {
+                    data.devices.forEach(device => {
+                        const option = document.createElement('option');
+                        option.value = device.entity_id;
+                        option.textContent = device.name || device.entity_id;
+                        select.appendChild(option);
+                    });
+                    select.value = data.devices[0].entity_id;
+                    loadData();
+                }
+            } catch (error) {
+                showError('Failed to load devices: ' + error.message);
+            }
+        }
+
+        function getTimeRange() {
+            const range = document.getElementById('time-range').value;
+            const now = new Date();
+            let start;
+            
+            switch(range) {
+                case '1h': start = new Date(now - 1 * 60 * 60 * 1000); break;
+                case '6h': start = new Date(now - 6 * 60 * 60 * 1000); break;
+                case '24h': start = new Date(now - 24 * 60 * 60 * 1000); break;
+                case '7d': start = new Date(now - 7 * 24 * 60 * 60 * 1000); break;
+                case '30d': start = new Date(now - 30 * 24 * 60 * 60 * 1000); break;
+                default: start = new Date(now - 24 * 60 * 60 * 1000);
+            }
+            
+            return { start: start.toISOString(), end: now.toISOString() };
+        }
+
+        async function loadData() {
+            const deviceId = document.getElementById('device-select').value;
+            if (!deviceId) {
+                showError('Please select a device');
+                return;
+            }
+            
+            clearError();
+            const range = getTimeRange();
+            
+            try {
+                const response = await fetch(
+                    `/api/locations?device_id=${encodeURIComponent(deviceId)}&start=${range.start}&end=${range.end}&limit=10000`
+                );
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                locations = data.locations || [];
+                
+                if (locations.length === 0) {
+                    showError('No location data found for the selected time range');
+                    return;
+                }
+                
+                updateStats();
+                updatePath();
+                currentIndex = locations.length - 1;
+                document.getElementById('time-slider').value = 100;
+                updateMarker();
+                
+                // Fit map to path
+                if (locations.length > 0) {
+                    const coords = locations.map(l => [l.latitude, l.longitude]);
+                    map.fitBounds(coords);
+                }
+                
+            } catch (error) {
+                showError('Failed to load data: ' + error.message);
+            }
+        }
+
+        function updateStats() {
+            const total = locations.length;
+            const known = locations.filter(l => l.in_zone).length;
+            const unknown = total - known;
+            
+            document.getElementById('total-points').textContent = total;
+            document.getElementById('known-locations').textContent = known;
+            document.getElementById('unknown-locations').textContent = unknown;
+        }
+
+        function updatePath() {
+            pathLayer.clearLayers();
+            
+            if (locations.length < 2) return;
+            
+            const coords = locations.map(l => [l.latitude, l.longitude]);
+            L.polyline(coords, {
+                color: '#0d6efd',
+                weight: 3,
+                opacity: 0.7
+            }).addTo(pathLayer);
+        }
+
+        function updateMarker() {
+            markerLayer.clearLayers();
+            
+            if (locations.length === 0) return;
+            
+            const loc = locations[currentIndex];
+            const color = loc.in_zone ? '#198754' : '#dc3545';
+            
+            const icon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="background:${color}; width:20px; height:20px; border-radius:50%; border:3px solid white; box-shadow:0 2px 5px rgba(0,0,0,0.3);"></div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+            
+            L.marker([loc.latitude, loc.longitude], { icon })
+                .addTo(markerLayer)
+                .bindPopup(`
+                    <strong>${loc.device_name || loc.device_id}</strong><br>
+                    Time: ${new Date(loc.time).toLocaleString()}<br>
+                    Zone: ${loc.zone_name || 'Unknown'}<br>
+                    Coords: ${loc.latitude.toFixed(5)}, ${loc.longitude.toFixed(5)}
+                `);
+            
+            document.getElementById('current-time').textContent = 
+                new Date(loc.time).toLocaleString() + 
+                (loc.in_zone ? ` - ${loc.zone_name}` : ' - Unknown Location');
+        }
+
+        function showError(message) {
+            document.getElementById('error-container').innerHTML = 
+                `<div class="error">${message}</div>`;
+        }
+
+        function clearError() {
+            document.getElementById('error-container').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
