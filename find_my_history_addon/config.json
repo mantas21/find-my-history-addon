@@ -1,6 +1,6 @@
 {
   "name": "Find My Location History",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "slug": "find_my_history",
   "description": "Record and visualize device location history from iCloud integration with focus on unknown locations",
   "arch": ["amd64", "armhf", "armv7", "aarch64", "i386"],
