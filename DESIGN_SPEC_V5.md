@@ -696,7 +696,275 @@ function addSpeedToPopup(location, previousLocation) {
 
 ---
 
-## Component 5: Enhanced Sidebar Stats Section
+## Component 5: Timeline Navigation with Previous/Next Location
+
+### Problem
+Currently, "From:" shows the first location in history or a stable location from 30+ minutes ago. When navigating through the timeline, users need to see the actual previous and next location points relative to the currently selected point.
+
+### Solution
+Show previous/next locations based on the current timeline position, updating dynamically as user navigates.
+
+### Timeline Navigation Logic
+
+```javascript
+let currentLocationIndex = 0; // Index in locations array
+let locations = []; // Sorted by time, newest first
+
+// Get previous and next locations for current index
+function getAdjacentLocations(index) {
+    const previous = index < locations.length - 1 ? locations[index + 1] : null;
+    const current = locations[index];
+    const next = index > 0 ? locations[index - 1] : null;
+    
+    return { previous, current, next };
+}
+
+// Update sidebar when timeline position changes
+function updateLocationDetails(index) {
+    const { previous, current, next } = getAdjacentLocations(index);
+    
+    // Update current location display
+    updateCurrentLocationDisplay(current);
+    
+    // Update previous location (if exists)
+    if (previous) {
+        const distance = getDistance(previous, current);
+        const placeName = previous.zone_name || 
+                         await getNearbyPlaceName(previous.latitude, previous.longitude) ||
+                         `${previous.latitude.toFixed(4)}, ${previous.longitude.toFixed(4)}`;
+        
+        updatePreviousLocationDisplay(placeName, distance);
+    } else {
+        hidePreviousLocation();
+    }
+    
+    // Update next location (if exists)
+    if (next) {
+        const distance = getDistance(current, next);
+        const placeName = next.zone_name || 
+                         await getNearbyPlaceName(next.latitude, next.longitude) ||
+                         `${next.latitude.toFixed(4)}, ${next.longitude.toFixed(4)}`;
+        
+        updateNextLocationDisplay(placeName, distance);
+    } else {
+        hideNextLocation();
+    }
+}
+
+// Time slider change handler
+function onTimeSliderChange(value) {
+    // Convert slider value (0-100) to index
+    const index = Math.floor((value / 100) * Math.max(locations.length - 1, 0));
+    currentLocationIndex = index;
+    
+    // Update map marker
+    updateMapMarker(locations[index]);
+    
+    // Update sidebar with previous/next
+    updateLocationDetails(index);
+}
+
+// Navigation buttons
+function navigateToPrevious() {
+    if (currentLocationIndex < locations.length - 1) {
+        currentLocationIndex++;
+        const sliderValue = (currentLocationIndex / Math.max(locations.length - 1, 1)) * 100;
+        document.getElementById('time-slider').value = sliderValue;
+        onTimeSliderChange(sliderValue);
+    }
+}
+
+function navigateToNext() {
+    if (currentLocationIndex > 0) {
+        currentLocationIndex--;
+        const sliderValue = (currentLocationIndex / Math.max(locations.length - 1, 1)) * 100;
+        document.getElementById('time-slider').value = sliderValue;
+        onTimeSliderChange(sliderValue);
+    }
+}
+```
+
+### Updated HTML Structure
+
+```html
+<!-- Origin Section - Now shows Previous and Next -->
+<div class="detail-section">
+    <!-- Previous Location -->
+    <div class="location-nav previous" id="previous-location" style="display: none;">
+        <button class="nav-button prev" onclick="navigateToPrevious()" title="Go to previous location">
+            ◀
+        </button>
+        <div class="location-nav-info">
+            <div class="location-nav-label">← From</div>
+            <div class="location-nav-place" id="previous-place">Home</div>
+            <div class="location-nav-distance" id="previous-distance">749 m away</div>
+        </div>
+    </div>
+    
+    <!-- Next Location -->
+    <div class="location-nav next" id="next-location" style="display: none;">
+        <div class="location-nav-info">
+            <div class="location-nav-label">To →</div>
+            <div class="location-nav-place" id="next-place">Work</div>
+            <div class="location-nav-distance" id="next-distance">2.1 km away</div>
+        </div>
+        <button class="nav-button next" onclick="navigateToNext()" title="Go to next location">
+            ▶
+        </button>
+    </div>
+</div>
+```
+
+### CSS
+
+```css
+.location-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) 0;
+}
+
+.location-nav.previous {
+    border-bottom: 1px solid var(--apple-gray4);
+    padding-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+}
+
+.location-nav.next {
+    padding-top: var(--spacing-md);
+    margin-top: var(--spacing-sm);
+}
+
+.nav-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--apple-gray4);
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.nav-button:hover {
+    background: var(--apple-blue);
+    border-color: var(--apple-blue);
+    color: white;
+}
+
+.nav-button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.location-nav-info {
+    flex: 1;
+}
+
+.location-nav-label {
+    font-size: var(--font-size-caption);
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+.location-nav-place {
+    font-size: var(--font-size-subhead);
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.location-nav-distance {
+    font-size: var(--font-size-caption2);
+    color: var(--text-tertiary);
+    margin-top: 2px;
+}
+```
+
+### Update Functions
+
+```javascript
+function updatePreviousLocationDisplay(placeName, distance) {
+    const section = document.getElementById('previous-location');
+    document.getElementById('previous-place').textContent = placeName;
+    document.getElementById('previous-distance').textContent = formatDistance(distance);
+    section.style.display = 'flex';
+    
+    // Enable/disable button
+    const button = section.querySelector('.nav-button');
+    button.disabled = currentLocationIndex >= locations.length - 1;
+}
+
+function updateNextLocationDisplay(placeName, distance) {
+    const section = document.getElementById('next-location');
+    document.getElementById('next-place').textContent = placeName;
+    document.getElementById('next-distance').textContent = formatDistance(distance);
+    section.style.display = 'flex';
+    
+    // Enable/disable button
+    const button = section.querySelector('.nav-button');
+    button.disabled = currentLocationIndex <= 0;
+}
+
+function hidePreviousLocation() {
+    document.getElementById('previous-location').style.display = 'none';
+}
+
+function hideNextLocation() {
+    document.getElementById('next-location').style.display = 'none';
+}
+```
+
+### Time Navigation Controls Enhancement
+
+```html
+<div class="time-nav">
+    <button class="time-nav-btn" id="prev-btn" onclick="navigateToPrevious()">
+        <span class="icon">◀</span>
+    </button>
+    <button class="time-nav-btn" id="play-btn" onclick="togglePlay()">
+        <span class="icon">▶</span>
+    </button>
+    <div class="time-slider-wrapper">
+        <input type="range" id="time-slider" min="0" max="100" value="100">
+        <div class="time-markers">
+            <span class="marker start">00:00</span>
+            <span class="marker end">23:59</span>
+        </div>
+    </div>
+    <div class="time-display">
+        <span class="time-current">Today, 13:48</span>
+        <span class="time-points">42 pts</span>
+    </div>
+    <button class="time-nav-btn" id="next-btn" onclick="navigateToNext()">
+        <span class="icon">▶</span>
+    </button>
+</div>
+```
+
+### Visual Example
+
+```
+┌─────────────────────────────────────┐
+│  ← From: Home                       │
+│     749 m away          [◀]        │
+│  ─────────────────────────────────   │
+│  📍 Caffeine Vilnius                │
+│     Gedimino pr. 9                  │
+│  ─────────────────────────────────   │
+│  To →: Work                         │
+│     2.1 km away          [▶]        │
+└─────────────────────────────────────┘
+```
+
+---
+
+## Component 6: Enhanced Sidebar Stats Section
 
 ### HTML Structure
 
@@ -869,11 +1137,15 @@ async def get_device_stats(device_id: str, time_range: str = '30d'):
 4. Sensor icons displayed on device chips (battery, distance, focus, connection, activity)
 5. Selecting person shows all their devices on map
 6. Auto-focus on primary device when multiple devices shown
-7. Visit frequency stats displayed in sidebar
-8. Trip detection working (shows trips in stats)
-9. Movement speed calculated and displayed
-10. All following Apple design principles
-11. Zero battery impact (all features use existing data)
+7. Timeline navigation shows actual previous location (not first in history)
+8. Timeline navigation shows next location (if exists)
+9. Previous/Next buttons navigate through timeline points
+10. Previous/Next location updates dynamically as user moves slider
+11. Visit frequency stats displayed in sidebar
+12. Trip detection working (shows trips in stats)
+13. Movement speed calculated and displayed
+14. All following Apple design principles
+15. Zero battery impact (all features use existing data)
 
 ---
 
@@ -891,13 +1163,19 @@ async def get_device_stats(device_id: str, time_range: str = '30d'):
 - [ ] Color coding for battery/charging/focus
 - [ ] Tooltips with sensor values
 
-### Phase 1C: Analytics (Week 2)
+### Phase 1C: Timeline Navigation Fix (Week 2)
+- [ ] Previous/next location logic based on current index
+- [ ] Navigation buttons (◀ ▶) in sidebar
+- [ ] Dynamic update on slider change
+- [ ] Show/hide previous/next based on availability
+
+### Phase 1D: Analytics (Week 2)
 - [ ] Visit frequency calculation
 - [ ] Trip detection algorithm
 - [ ] Movement speed calculation
 - [ ] Stats display in sidebar
 
-### Phase 1D: Polish (Week 2)
+### Phase 1E: Polish (Week 2)
 - [ ] Apple design refinements
 - [ ] Animations and transitions
 - [ ] Responsive mobile layout
