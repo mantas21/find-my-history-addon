@@ -1,0 +1,29 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Start Find My Location History service
+# ==============================================================================
+
+bashio::log.info "Starting Find My Location History..."
+
+# Export configuration as environment variables
+export HA_URL=$(bashio::config 'ha_url')
+export HA_TOKEN=$(bashio::config 'ha_token')
+export CHECK_INTERVAL=$(bashio::config 'check_interval')
+export INFLUXDB_HOST=$(bashio::config 'influxdb_host')
+export INFLUXDB_PORT=$(bashio::config 'influxdb_port')
+export INFLUXDB_DATABASE=$(bashio::config 'influxdb_database')
+export INFLUXDB_USERNAME=$(bashio::config 'influxdb_username')
+export INFLUXDB_PASSWORD=$(bashio::config 'influxdb_password')
+export FOCUS_UNKNOWN_LOCATIONS=$(bashio::config 'focus_unknown_locations')
+export API_PORT=$(bashio::config 'api_port')
+export DEVICES="$(bashio::config 'devices')"
+
+bashio::log.info "Configuration loaded"
+bashio::log.info "HA URL: ${HA_URL}"
+bashio::log.info "Check interval: ${CHECK_INTERVAL} minutes"
+bashio::log.info "InfluxDB: ${INFLUXDB_HOST}:${INFLUXDB_PORT}/${INFLUXDB_DATABASE}"
+bashio::log.info "API Port: ${API_PORT}"
+
+# Start the Python application
+cd /app
+exec python3 -m find_my_history.main
