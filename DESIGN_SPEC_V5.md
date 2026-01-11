@@ -17,7 +17,7 @@ Enhanced sidebar UI with person/device grouping, sensor status icons, and Phase 
 │  Location History        │                                     │
 │  ─────────────────────   │                                     │
 │                          │           MAP AREA                   │
-│  👤 Viktorija            │                                     │
+│  👤 User            │                                     │
 │  ┌──────────────────┐     │    ● iPhone (primary)               │
 │  │ ≡ iPhone  ✕     │     │    ● Apple Watch                   │
 │  │   🔋⚡ 📍 🎯 📡  │     │                                     │
@@ -96,7 +96,7 @@ function groupDevicesByPerson(devices) {
 
 // Fallback: extract person name from device name
 function extractPersonFromName(deviceName) {
-    // "Viktorija's iPhone" → "Viktorija"
+    // "User's iPhone" → "User"
     const match = deviceName.match(/^(.+?)(?:'s|')\s/);
     return match ? match[1] : 'Unknown';
 }
@@ -138,10 +138,10 @@ function findMostRecentlyMovedDevice(devices) {
 ```html
 <div class="persons-list" id="persons-list">
     <!-- Person Group -->
-    <div class="person-group" data-person="Viktorija">
-        <div class="person-header" onclick="togglePersonGroup('Viktorija')">
+    <div class="person-group" data-person="User">
+        <div class="person-header" onclick="togglePersonGroup('User')">
             <span class="person-icon">👤</span>
-            <span class="person-name">Viktorija</span>
+            <span class="person-name">User</span>
             <span class="person-device-count">2 devices</span>
             <span class="person-toggle">▼</span>
         </div>
@@ -149,8 +149,8 @@ function findMostRecentlyMovedDevice(devices) {
         <div class="person-devices">
             <!-- Primary device (most recently moved) -->
             <div class="device-chip selected primary" 
-                 data-device-id="device_tracker.viktorijas_iphone"
-                 data-person="Viktorija">
+                 data-device-id="device_tracker.users_iphone"
+                 data-person="User">
                 <span class="drag-handle">≡</span>
                 <span class="device-name">iPhone</span>
                 <div class="device-sensors">
@@ -165,8 +165,8 @@ function findMostRecentlyMovedDevice(devices) {
             
             <!-- Secondary device -->
             <div class="device-chip" 
-                 data-device-id="device_tracker.viktorijas_apple_watch"
-                 data-person="Viktorija">
+                 data-device-id="device_tracker.users_apple_watch"
+                 data-person="User">
                 <span class="drag-handle">≡</span>
                 <span class="device-name">Apple Watch</span>
                 <div class="device-sensors">
