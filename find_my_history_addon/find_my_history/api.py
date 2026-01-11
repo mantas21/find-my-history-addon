@@ -1,5 +1,6 @@
 """HTTP API server for Lovelace card backend."""
 
+import json
 import logging
 import os
 from datetime import datetime, timedelta
@@ -9,6 +10,7 @@ import aiohttp_cors
 
 from find_my_history.ha_client import HomeAssistantClient
 from find_my_history.influxdb_client import InfluxDBLocationClient
+from find_my_history.device_prefs import get_device_prefs
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,6 +60,7 @@ class LocationHistoryAPI:
         self.app.router.add_get("/api/locations", self.get_locations)
         self.app.router.add_get("/api/zones", self.get_zones)
         self.app.router.add_get("/api/devices", self.get_devices)
+        self.app.router.add_post("/api/devices/toggle", self.toggle_device)
         self.app.router.add_get("/api/stats", self.get_stats)
         self.app.router.add_get("/health", self.health_check)
         
@@ -148,9 +151,10 @@ class LocationHistoryAPI:
             )
 
     async def get_devices(self, request: web.Request) -> web.Response:
-        """Get list of tracked devices."""
+        """Get list of all device_tracker entities with tracking status."""
         try:
             devices = []
+            prefs = get_device_prefs()
             
             # Try to get device trackers from HA
             trackers = self.ha_client.get_all_device_trackers()
@@ -163,6 +167,8 @@ class LocationHistoryAPI:
                             "entity_id": entity_id,
                             "name": tracker.get("attributes", {}).get("friendly_name", entity_id),
                             "state": tracker.get("state"),
+                            "is_tracked": prefs.is_tracked(entity_id),
+                            "interval_minutes": prefs.get_interval(entity_id, 5),
                         })
             
             # If no devices from HA, try to get unique devices from InfluxDB
@@ -174,14 +180,52 @@ class LocationHistoryAPI:
                             "entity_id": device_id,
                             "name": device_id.replace("device_tracker.", "").replace("_", " ").title(),
                             "state": "unknown",
+                            "is_tracked": prefs.is_tracked(device_id),
+                            "interval_minutes": prefs.get_interval(device_id, 5),
                         })
                 except Exception as e:
                     _LOGGER.warning(f"Could not get devices from InfluxDB: {e}")
+
+            # Sort: tracked devices first, then alphabetically
+            devices.sort(key=lambda d: (not d["is_tracked"], d["name"].lower()))
 
             return web.json_response({"devices": devices})
 
         except Exception as e:
             _LOGGER.error(f"Error in get_devices: {e}", exc_info=True)
+            return web.json_response(
+                {"error": str(e)}, status=500
+            )
+
+    async def toggle_device(self, request: web.Request) -> web.Response:
+        """Toggle device tracking status."""
+        try:
+            data = await request.json()
+            entity_id = data.get("entity_id")
+            interval_minutes = data.get("interval_minutes", 5)
+            
+            if not entity_id:
+                return web.json_response(
+                    {"error": "entity_id is required"}, status=400
+                )
+            
+            prefs = get_device_prefs()
+            is_now_tracked = prefs.toggle_device(entity_id, interval_minutes)
+            
+            _LOGGER.info(f"Device {entity_id} tracking toggled: {'ON' if is_now_tracked else 'OFF'}")
+            
+            return web.json_response({
+                "entity_id": entity_id,
+                "is_tracked": is_now_tracked,
+                "message": f"Device tracking {'enabled' if is_now_tracked else 'disabled'}"
+            })
+
+        except json.JSONDecodeError:
+            return web.json_response(
+                {"error": "Invalid JSON body"}, status=400
+            )
+        except Exception as e:
+            _LOGGER.error(f"Error in toggle_device: {e}", exc_info=True)
             return web.json_response(
                 {"error": str(e)}, status=500
             )

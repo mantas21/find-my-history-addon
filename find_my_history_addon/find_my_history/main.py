@@ -14,6 +14,7 @@ from find_my_history.ha_client import HomeAssistantClient
 from find_my_history.zone_detector import ZoneDetector
 from find_my_history.influxdb_client import InfluxDBLocationClient
 from find_my_history.api import LocationHistoryAPI
+from find_my_history.device_prefs import get_device_prefs
 
 # Configure logging
 logging.basicConfig(
@@ -230,10 +231,24 @@ def main():
 
     # Load configuration
     config = load_config()
-    tracked_devices = config["tracked_devices"]
-    _LOGGER.info(f"Configuration loaded: {len(tracked_devices)} devices configured")
     
-    for dev in tracked_devices:
+    # Initialize device preferences (persistent storage)
+    prefs = get_device_prefs()
+    
+    # If config has devices and prefs is empty, initialize prefs from config
+    config_devices = config.get("tracked_devices", [])
+    if config_devices and not prefs.get_tracked_devices():
+        _LOGGER.info("Initializing device preferences from add-on config...")
+        for dev in config_devices:
+            entity_id = dev.get("entity_id")
+            interval = dev.get("interval_minutes", 5)
+            if entity_id:
+                prefs.add_device(entity_id, interval)
+    
+    # Log current tracked devices
+    tracked = prefs.get_tracked_with_intervals()
+    _LOGGER.info(f"Device preferences loaded: {len(tracked)} devices tracked")
+    for dev in tracked:
         _LOGGER.info(f"  - {dev['entity_id']}: every {dev.get('interval_minutes', 5)} minutes")
 
     # Initialize clients
@@ -264,7 +279,7 @@ def main():
     
     # Base check interval (1 minute) - check if any device needs updating
     base_interval = 60
-    _LOGGER.info("Starting polling loop with per-device intervals")
+    _LOGGER.info("Starting polling loop with dynamic device tracking")
 
     try:
         while True:
@@ -277,6 +292,9 @@ def main():
                 zone_detector.update_zones(zones)
                 zone_refresh_counter = 0
 
+            # Get current tracked devices (re-read from prefs for hot reload)
+            tracked_devices = prefs.get_tracked_with_intervals()
+            
             # Check each device if it needs to be polled
             devices_to_poll = []
             for dev in tracked_devices:
@@ -290,7 +308,6 @@ def main():
 
             # Poll devices that need updating
             if devices_to_poll:
-                _LOGGER.info(f"Polling {len(devices_to_poll)} devices...")
                 poll_devices(
                     ha_client,
                     zone_detector,
@@ -300,7 +317,7 @@ def main():
                 )
             
             if not tracked_devices:
-                _LOGGER.warning("No devices configured. Add devices in the add-on configuration.")
+                _LOGGER.debug("No devices tracked. Use the web UI to add devices.")
 
             # Sleep for base interval
             time.sleep(base_interval)
