@@ -20,7 +20,7 @@ jobs:
 
       - name: Check Python syntax
         run: |
-          python3 -m py_compile find_my_history_addon/find_my_history/**/*.py || exit 1
+          python3 -m py_compile find_my_history_addon/find_my_history/*.py || exit 1
           echo "✅ Python syntax check passed"
 
       - name: Check JSON files
