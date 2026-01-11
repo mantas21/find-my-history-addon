@@ -57,25 +57,51 @@ class HomeAssistantClient:
         Returns:
             List of device_tracker entity states
         """
+        _LOGGER.debug("Fetching all device trackers from HA API")
         states = self._request("GET", "/api/states")
-        if not states:
+        
+        if states is None:
+            _LOGGER.warning("Failed to get states from HA API, states is None")
+            return []
+        
+        if not isinstance(states, list):
+            _LOGGER.warning(f"Unexpected response type from /api/states: {type(states)}")
             return []
 
-        return [
+        trackers = [
             state for state in states
             if state.get("entity_id", "").startswith("device_tracker.")
         ]
+        _LOGGER.info(f"Found {len(trackers)} device_tracker entities")
+        return trackers
 
     def get_zones(self) -> List[Dict]:
         """
-        Get all Home Assistant zones.
+        Get all Home Assistant zones from entity states.
 
         Returns:
             List of zone configurations
         """
-        zones = self._request("GET", "/api/config/zone_registry")
-        if not zones:
+        # Get zones from states (zone.* entities)
+        states = self._request("GET", "/api/states")
+        if not states or not isinstance(states, list):
             return []
+        
+        zones = []
+        for state in states:
+            entity_id = state.get("entity_id", "")
+            if entity_id.startswith("zone."):
+                attrs = state.get("attributes", {})
+                zones.append({
+                    "entity_id": entity_id,
+                    "name": attrs.get("friendly_name", entity_id.replace("zone.", "")),
+                    "latitude": attrs.get("latitude"),
+                    "longitude": attrs.get("longitude"),
+                    "radius": attrs.get("radius", 100),
+                    "icon": attrs.get("icon", "mdi:map-marker"),
+                })
+        
+        _LOGGER.info(f"Found {len(zones)} zone entities")
         return zones
 
     def get_entity_state(self, entity_id: str) -> Optional[Dict]:
