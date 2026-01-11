@@ -33,4 +33,4 @@ echo "Devices: ${DEVICES}"
 
 # Start the Python application
 cd /app
-exec python3 -m find_my_history.main
+exec python -m find_my_history.main
