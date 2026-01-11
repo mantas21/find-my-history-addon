@@ -17,7 +17,7 @@
     "influxdb_username": "admin",
     "influxdb_password": "",
     "focus_unknown_locations": true,
-    "api_port": 8080
+    "api_port": 8090
   },
   "schema": {
     "ha_url": "str",
@@ -33,9 +33,9 @@
     "api_port": "int(1,65535)?"
   },
   "ports": {
-    "8080/tcp": 8080
+    "8090/tcp": 8090
   },
   "ports_description": {
-    "8080/tcp": "HTTP API for Lovelace card"
+    "8090/tcp": "HTTP API for Lovelace card"
   }
 }
