@@ -17,7 +17,7 @@ Records and visualizes device location history from Apple's Find My (via Home As
 ### Method 1: Add Custom Repository (Recommended)
 
 1. Go to **Supervisor** → **Add-on Store** → **⋮** (three dots) → **Repositories**
-2. Add this repository URL: `https://github.com/yourusername/find-my-history-addon`
+2. Add this repository URL: `https://github.com/mantas21/find-my-history-addon`
 3. Find "Find My Location History" in the add-on store
 4. Click **Install**
 
@@ -105,7 +105,7 @@ curl -X POST "http://a0d7b954_influxdb:8086/query" \
 4. You should see messages like:
    - "Configuration loaded: X devices configured"
    - "Loaded X zones"
-   - "Starting API server on port 8080"
+   - "Starting API server on port 8090"
    - "Stored location for device_tracker.xxx"
 
 ### Installing the Lovelace Card
@@ -126,7 +126,7 @@ devices:
   - device_tracker.ipad
 default_time_range: 24h
 highlight_unknown: true
-api_url: http://localhost:8080
+api_url: http://localhost:8090
 ```
 
 ## API Endpoints

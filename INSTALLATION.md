@@ -8,7 +8,7 @@
 2. Go to **Supervisor** → **Add-on Store**
 3. Click the **three dots (⋮)** in the top right corner
 4. Select **Repositories**
-5. Add repository URL: `https://github.com/yourusername/find-my-history-addon`
+5. Add repository URL: `https://github.com/mantas21/find-my-history-addon`
 6. Click **Add**
 
 ### 2. Install the Add-on
@@ -59,7 +59,7 @@ influxdb_database: find_my_history
 influxdb_username: admin
 influxdb_password: YOUR_INFLUXDB_PASSWORD
 focus_unknown_locations: true
-api_port: 8080
+api_port: 8090
 ```
 
 4. Click **Save**
@@ -84,7 +84,7 @@ curl -X POST "http://a0d7b954_influxdb:8086/query?u=admin&p=YOUR_PASSWORD" \
 3. Check **Log** tab for:
    - "Configuration loaded: X devices configured"
    - "Loaded X zones"
-   - "Starting API server on port 8080"
+   - "Starting API server on port 8090"
    - Location storage messages
 
 ### 7. Install Lovelace Card
@@ -120,7 +120,7 @@ devices:
   - device_tracker.ipad
 default_time_range: 24h
 highlight_unknown: true
-api_url: http://localhost:8080
+api_url: http://localhost:8090
 ```
 
 5. Click **Save**
@@ -134,7 +134,7 @@ ha addons info local_find_my_history
 
 ### Test API
 ```bash
-curl http://localhost:8080/api/health
+curl http://localhost:8090/api/health
 ```
 Should return: `{"status": "ok"}`
 
