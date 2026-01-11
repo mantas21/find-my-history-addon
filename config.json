@@ -1,0 +1,42 @@
+{
+  "name": "Find My Location History",
+  "version": "1.0.0",
+  "slug": "find_my_history",
+  "description": "Record and visualize device location history from iCloud integration with focus on unknown locations",
+  "arch": ["amd64", "armhf", "armv7", "aarch64", "i386"],
+  "startup": "application",
+  "boot": "auto",
+  "options": {
+    "ha_url": "http://supervisor/core",
+    "ha_token": "",
+    "check_interval": 30,
+    "devices": [],
+    "influxdb_host": "a0d7b954_influxdb",
+    "influxdb_port": 8086,
+    "influxdb_database": "find_my_history",
+    "influxdb_username": "admin",
+    "influxdb_password": "",
+    "focus_unknown_locations": true,
+    "api_port": 8080
+  },
+  "schema": {
+    "ha_url": "str",
+    "ha_token": "str",
+    "check_interval": "int(1,1440)",
+    "devices": ["str"],
+    "influxdb_host": "str",
+    "influxdb_port": "int(1,65535)",
+    "influxdb_database": "str",
+    "influxdb_username": "str",
+    "influxdb_password": "str",
+    "focus_unknown_locations": "bool",
+    "api_port": "int(1,65535)?"
+  },
+  "ports": {
+    "8080/tcp": 8080
+  },
+  "ports_description": {
+    "8080/tcp": "HTTP API for Lovelace card"
+  },
+  "image": "ghcr.io/home-assistant/{arch}-base-python:latest"
+}
