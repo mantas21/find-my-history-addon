@@ -38,5 +38,5 @@
   "ports_description": {
     "8080/tcp": "HTTP API for Lovelace card"
   },
-  "image": "ghcr.io/home-assistant/{arch}-base-python:latest"
+  "image": "homeassistant/{arch}-base-python"
 }
