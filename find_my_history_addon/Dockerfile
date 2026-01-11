@@ -13,6 +13,10 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY find_my_history/ /app/find_my_history/
+COPY run.sh /run.sh
 
-# Copy S6 service files
-COPY rootfs /
+# Make run script executable
+RUN chmod a+x /run.sh
+
+# Run the application
+CMD ["/run.sh"]

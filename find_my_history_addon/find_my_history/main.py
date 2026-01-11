@@ -10,8 +10,6 @@ import asyncio
 from datetime import datetime
 from typing import Dict, List, Optional
 
-import bashio
-
 from find_my_history.ha_client import HomeAssistantClient
 from find_my_history.zone_detector import ZoneDetector
 from find_my_history.influxdb_client import InfluxDBLocationClient
@@ -26,18 +24,31 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def load_config() -> Dict:
-    """Load configuration from Home Assistant add-on options."""
+    """Load configuration from environment variables (set by run.sh from options.json)."""
+    # Parse devices from JSON string
+    devices_str = os.environ.get("DEVICES", "[]")
+    try:
+        devices = json.loads(devices_str) if devices_str else []
+    except json.JSONDecodeError:
+        _LOGGER.warning(f"Could not parse DEVICES: {devices_str}")
+        devices = []
+
+    # Parse boolean
+    focus_unknown_str = os.environ.get("FOCUS_UNKNOWN_LOCATIONS", "true")
+    focus_unknown = focus_unknown_str.lower() in ("true", "1", "yes")
+
     config = {
-        "ha_url": bashio.config.get("ha_url", "http://supervisor/core"),
-        "ha_token": bashio.config.get("ha_token"),
-        "check_interval": bashio.config.get("check_interval", 30),
-        "devices": bashio.config.get("devices", []),
-        "influxdb_host": bashio.config.get("influxdb_host", "a0d7b954_influxdb"),
-        "influxdb_port": bashio.config.get("influxdb_port", 8086),
-        "influxdb_database": bashio.config.get("influxdb_database", "find_my_history"),
-        "influxdb_username": bashio.config.get("influxdb_username", "admin"),
-        "influxdb_password": bashio.config.get("influxdb_password"),
-        "focus_unknown_locations": bashio.config.get("focus_unknown_locations", True),
+        "ha_url": os.environ.get("HA_URL", "http://supervisor/core"),
+        "ha_token": os.environ.get("HA_TOKEN", ""),
+        "check_interval": int(os.environ.get("CHECK_INTERVAL", "30")),
+        "devices": devices,
+        "influxdb_host": os.environ.get("INFLUXDB_HOST", "a0d7b954_influxdb"),
+        "influxdb_port": int(os.environ.get("INFLUXDB_PORT", "8086")),
+        "influxdb_database": os.environ.get("INFLUXDB_DATABASE", "find_my_history"),
+        "influxdb_username": os.environ.get("INFLUXDB_USERNAME", "admin"),
+        "influxdb_password": os.environ.get("INFLUXDB_PASSWORD", ""),
+        "focus_unknown_locations": focus_unknown,
+        "api_port": int(os.environ.get("API_PORT", "8090")),
     }
 
     # Validate required config
@@ -212,7 +223,7 @@ def main():
     _LOGGER.info(f"Loaded {len(zones)} zones")
 
     # Start API server in background thread
-    api_port = int(bashio.config.get("api_port", 8080))
+    api_port = config["api_port"]
     api = LocationHistoryAPI(ha_client, influx_client, port=api_port)
     api_thread = threading.Thread(target=run_api_server, args=(api,), daemon=True)
     api_thread.start()
