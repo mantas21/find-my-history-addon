@@ -37,9 +37,13 @@ def load_config() -> Dict:
     focus_unknown_str = os.environ.get("FOCUS_UNKNOWN_LOCATIONS", "true")
     focus_unknown = focus_unknown_str.lower() in ("true", "1", "yes")
 
+    # Get HA token - prefer SUPERVISOR_TOKEN (automatic when homeassistant_api: true)
+    # Fall back to user-provided HA_TOKEN
+    ha_token = os.environ.get("SUPERVISOR_TOKEN", "") or os.environ.get("HA_TOKEN", "")
+    
     config = {
         "ha_url": os.environ.get("HA_URL", "http://supervisor/core"),
-        "ha_token": os.environ.get("HA_TOKEN", ""),
+        "ha_token": ha_token,
         "check_interval": int(os.environ.get("CHECK_INTERVAL", "30")),
         "devices": devices,
         "influxdb_host": os.environ.get("INFLUXDB_HOST", "a0d7b954_influxdb"),
@@ -51,10 +55,12 @@ def load_config() -> Dict:
         "api_port": int(os.environ.get("API_PORT", "8090")),
     }
 
-    # Validate required config
+    # Validate required config - with homeassistant_api: true, SUPERVISOR_TOKEN is auto-provided
     if not config["ha_token"]:
-        _LOGGER.error("ha_token is required in add-on configuration")
+        _LOGGER.error("No HA token available. Either set ha_token in config or enable homeassistant_api.")
         sys.exit(1)
+    
+    _LOGGER.info(f"Using {'Supervisor' if os.environ.get('SUPERVISOR_TOKEN') else 'user-provided'} token for HA API")
 
     if not config["devices"]:
         _LOGGER.warning("No devices configured. Add device_tracker entity IDs to 'devices' option.")
