@@ -123,17 +123,9 @@ def extract_location_data(entity_state: Dict) -> Optional[Dict]:
             _LOGGER.debug(f"Entity {entity_state.get('entity_id')} has no location data")
             return None
 
-    # Parse timestamp
-    last_updated = entity_state.get("last_updated")
-    timestamp = None
-    if last_updated:
-        try:
-            timestamp = datetime.fromisoformat(last_updated.replace("Z", "+00:00"))
-        except (ValueError, AttributeError):
-            timestamp = datetime.utcnow()
-
-    if timestamp is None:
-        timestamp = datetime.utcnow()
+    # Use current time for poll timestamp (not entity's last_updated)
+    # This ensures each poll creates a new data point even if device hasn't moved
+    timestamp = datetime.utcnow()
 
     return {
         "latitude": float(latitude),
