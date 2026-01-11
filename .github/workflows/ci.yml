@@ -52,8 +52,7 @@ jobs:
           python -m pip install --upgrade pip
           # Install Cython before PyYAML to avoid build issues
           pip install Cython
-          # Install PyYAML >=6.0 which has pre-built wheels
-          pip install "PyYAML>=6.0"
+          # PyYAML>=6.0 is pinned in tests/requirements.txt to use pre-built wheels
           pip install -r find_my_history_addon/requirements.txt
           pip install -r tests/requirements.txt
 

@@ -74,8 +74,7 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           # Install Cython before PyYAML to avoid build issues (PyYAML 5.4.1+ requires it)
           pip install Cython
-          # Install PyYAML >=6.0 which has pre-built wheels and resolves the cython_sources issue
-          pip install "PyYAML>=6.0"
+          # PyYAML>=6.0 is pinned in tests/requirements.txt to use pre-built wheels
           pip install -r find_my_history_addon/requirements.txt
           pip install -r tests/requirements.txt
 
