@@ -76,8 +76,14 @@ class ZoneDetector:
         for zone in self.zones:
             zone_lat = zone.get("latitude")
             zone_lon = zone.get("longitude")
-            zone_radius = zone.get("radius", 100)  # Default 100m
+            zone_radius_raw = zone.get("radius", 100)
             zone_name = zone.get("name", "unknown")
+            
+            # Handle radius that might be string like "100m" or "100"
+            if isinstance(zone_radius_raw, str):
+                zone_radius = float(zone_radius_raw.replace('m', '').strip())
+            else:
+                zone_radius = float(zone_radius_raw) if zone_radius_raw else 100.0
 
             if zone_lat is None or zone_lon is None:
                 _LOGGER.warning(f"Zone {zone_name} has no coordinates, skipping")

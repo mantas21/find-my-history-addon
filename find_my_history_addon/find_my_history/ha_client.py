@@ -92,12 +92,22 @@ class HomeAssistantClient:
             entity_id = state.get("entity_id", "")
             if entity_id.startswith("zone."):
                 attrs = state.get("attributes", {})
+                # Ensure radius is always a float
+                radius_raw = attrs.get("radius", 100)
+                if isinstance(radius_raw, str):
+                    try:
+                        radius = float(radius_raw.replace('m', '').strip())
+                    except ValueError:
+                        radius = 100.0
+                else:
+                    radius = float(radius_raw) if radius_raw else 100.0
+                    
                 zones.append({
                     "entity_id": entity_id,
                     "name": attrs.get("friendly_name", entity_id.replace("zone.", "")),
                     "latitude": attrs.get("latitude"),
                     "longitude": attrs.get("longitude"),
-                    "radius": attrs.get("radius", 100),
+                    "radius": radius,
                     "icon": attrs.get("icon", "mdi:map-marker"),
                 })
         
