@@ -20,7 +20,7 @@
 
 **Current popup (hard to read):**
 ```
-Viktorija's iPhone
+iPhone
 Time: 11/01/2026, 12:50:12
 Zone: Unknown
 Coords: 54.71881, 25.30142
@@ -29,7 +29,7 @@ Coords: 54.71881, 25.30142
 **New popup (cleaner UX with business names):**
 ```
 ┌─────────────────────────────────┐
-│  Viktorija's iPhone             │
+│  iPhone             │
 ├─────────────────────────────────┤
 │  📍 Caffeine Vilnius            │  <- Nearby business name
 │     Gedimino pr. 9              │  <- Street address
@@ -405,7 +405,7 @@ function findPreviousStableLocation(locations, currentIndex) {
 ```html
 <div class="location-popup">
     <div class="popup-header">
-        <strong class="device-name">Viktorija's iPhone</strong>
+        <strong class="device-name">iPhone</strong>
     </div>
     
     <div class="popup-section location">

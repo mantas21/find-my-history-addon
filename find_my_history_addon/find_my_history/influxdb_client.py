@@ -74,6 +74,8 @@ class InfluxDBLocationClient:
         longitude: float,
         accuracy: Optional[float] = None,
         altitude: Optional[float] = None,
+        battery_level: Optional[int] = None,
+        battery_state: Optional[str] = None,
         in_zone: bool = False,
         zone_name: Optional[str] = None,
         timestamp: Optional[datetime] = None
@@ -88,6 +90,8 @@ class InfluxDBLocationClient:
             longitude: Device longitude
             accuracy: Location accuracy in meters (optional)
             altitude: Device altitude in meters (optional)
+            battery_level: Battery percentage 0-100 (optional)
+            battery_state: Battery state "charging" or "not_charging" (optional)
             in_zone: Whether device is in a known zone
             zone_name: Zone name if in zone, None otherwise
             timestamp: Location timestamp (defaults to now)
@@ -114,6 +118,10 @@ class InfluxDBLocationClient:
                 point = point.field("accuracy", float(accuracy))
             if altitude is not None:
                 point = point.field("altitude", altitude)
+            if battery_level is not None:
+                point = point.field("battery_level", int(battery_level))
+            if battery_state is not None:
+                point = point.field("battery_state", battery_state)
 
             self.write_api.write(bucket=self.bucket, record=point)
             _LOGGER.debug(
@@ -186,11 +194,14 @@ class InfluxDBLocationClient:
                             "zone_name": record.values.get("zone_name", "unknown"),
                         }
 
-                    # Add field value (latitude, longitude, accuracy, altitude)
+                    # Add field value (latitude, longitude, accuracy, altitude, battery)
                     field = record.get_field()
                     value = record.get_value()
-                    if isinstance(value, (int, float)):
-                        location_map[time_key][field] = float(value)
+                    if field == "battery_state":
+                        # battery_state is a string field
+                        location_map[time_key][field] = value
+                    elif isinstance(value, (int, float)):
+                        location_map[time_key][field] = float(value) if field != "battery_level" else int(value)
 
             # Convert to list, filter valid locations, and sort by time
             locations = [

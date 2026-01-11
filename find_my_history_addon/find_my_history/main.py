@@ -132,6 +132,8 @@ def extract_location_data(entity_state: Dict) -> Optional[Dict]:
         "longitude": float(longitude),
         "accuracy": attributes.get("gps_accuracy"),
         "altitude": attributes.get("altitude"),
+        "battery_level": attributes.get("battery_level"),
+        "battery_state": attributes.get("battery_state"),  # "charging" or "not_charging"
         "timestamp": timestamp,
     }
 
@@ -186,6 +188,8 @@ def poll_devices(
                 longitude=location_data["longitude"],
                 accuracy=location_data.get("accuracy"),
                 altitude=location_data.get("altitude"),
+                battery_level=location_data.get("battery_level"),
+                battery_state=location_data.get("battery_state"),
                 in_zone=in_zone,
                 zone_name=zone_name,
                 timestamp=location_data["timestamp"]

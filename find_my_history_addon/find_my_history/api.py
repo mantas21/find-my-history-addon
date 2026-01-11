@@ -11,6 +11,7 @@ import aiohttp_cors
 from find_my_history.ha_client import HomeAssistantClient
 from find_my_history.influxdb_client import InfluxDBLocationClient
 from find_my_history.device_prefs import get_device_prefs
+from find_my_history.zone_detector import ZoneDetector
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,6 +40,11 @@ class LocationHistoryAPI:
         self.influx_client = influx_client
         self.port = port
         self.app = web.Application()
+        
+        # Initialize zone detector
+        zones = ha_client.get_zones()
+        self.zone_detector = ZoneDetector(zones)
+        
         self._setup_routes()
 
     def _setup_routes(self):
@@ -61,6 +67,7 @@ class LocationHistoryAPI:
         self.app.router.add_get("/api/zones", self.get_zones)
         self.app.router.add_get("/api/devices", self.get_devices)
         self.app.router.add_post("/api/devices/toggle", self.toggle_device)
+        self.app.router.add_post("/api/devices/update", self.update_device_location)
         self.app.router.add_get("/api/stats", self.get_stats)
         self.app.router.add_get("/health", self.health_check)
         
@@ -226,6 +233,93 @@ class LocationHistoryAPI:
             )
         except Exception as e:
             _LOGGER.error(f"Error in toggle_device: {e}", exc_info=True)
+            return web.json_response(
+                {"error": str(e)}, status=500
+            )
+
+    async def update_device_location(self, request: web.Request) -> web.Response:
+        """Force refresh location for a specific device."""
+        try:
+            data = await request.json()
+            device_id = data.get("device_id")
+            
+            if not device_id:
+                return web.json_response(
+                    {"error": "device_id is required"}, status=400
+                )
+            
+            # Get current state from HA
+            entity_state = self.ha_client.get_device_tracker_state(device_id)
+            if not entity_state:
+                return web.json_response(
+                    {"error": "Device not found"}, status=404
+                )
+            
+            # Extract location data
+            attributes = entity_state.get("attributes", {})
+            latitude = attributes.get("latitude")
+            longitude = attributes.get("longitude")
+            
+            if latitude is None or longitude is None:
+                return web.json_response(
+                    {"error": "No location data available"}, status=400
+                )
+            
+            # Get device info
+            device_name = attributes.get("friendly_name", device_id)
+            accuracy = attributes.get("gps_accuracy")
+            altitude = attributes.get("altitude")
+            battery_level = attributes.get("battery_level")
+            battery_state = attributes.get("battery_state")
+            
+            # Check zone
+            in_zone, zone_name = self.zone_detector.check_zone(
+                float(latitude), float(longitude)
+            )
+            
+            # Current timestamp
+            timestamp = datetime.utcnow()
+            
+            # Store in InfluxDB
+            success = self.influx_client.write_location(
+                device_id=device_id,
+                device_name=device_name,
+                latitude=float(latitude),
+                longitude=float(longitude),
+                accuracy=accuracy,
+                altitude=altitude,
+                battery_level=battery_level,
+                battery_state=battery_state,
+                in_zone=in_zone,
+                zone_name=zone_name,
+                timestamp=timestamp
+            )
+            
+            if success:
+                _LOGGER.info(f"Manually updated location for {device_id}")
+                return web.json_response({
+                    "success": True,
+                    "location": {
+                        "latitude": float(latitude),
+                        "longitude": float(longitude),
+                        "battery_level": battery_level,
+                        "battery_state": battery_state,
+                        "zone_name": zone_name,
+                        "in_zone": in_zone,
+                        "timestamp": timestamp.isoformat()
+                    }
+                })
+            else:
+                return web.json_response(
+                    {"error": "Failed to store location"}, status=500
+                )
+                
+        except json.JSONDecodeError:
+            return web.json_response(
+                {"error": "Invalid JSON body"}, status=400
+            )
+        except Exception as e:
+            _LOGGER.error(f"Error in update_device_location: {e}", exc_info=True)
             return web.json_response(
                 {"error": str(e)}, status=500
             )

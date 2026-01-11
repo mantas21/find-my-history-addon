@@ -25,7 +25,7 @@ This is a Home Assistant addon that displays device location history on a map. T
 
 **Visual example:**
 ```
-[ m1 (home) ✕ ]  [ Viktorija's iPhone (not_home) ✕ ]
+[ iPhone (home) ✕ ]  [ iPad (not_home) ✕ ]
 ```
 
 ---
@@ -187,7 +187,7 @@ function getDistance(lat1, lon1, lat2, lon2) {
 **Visual example - Enhanced Popup:**
 ```
 +----------------------------------+
-| Viktorija's iPhone           ✕  |
+| iPhone           ✕  |
 +----------------------------------+
 | Time: 11/01/2026, 12:50:12       |
 | Zone: Unknown                    |

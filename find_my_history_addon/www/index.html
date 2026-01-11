@@ -8,157 +8,233 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <style>
+        :root {
+            /* Apple System Colors */
+            --apple-blue: #007AFF;
+            --apple-green: #34C759;
+            --apple-yellow: #FF9500;
+            --apple-red: #FF3B30;
+            --apple-gray: #8E8E93;
+            --apple-gray2: #636366;
+            --apple-gray3: #48484A;
+            --apple-gray4: #3A3A3C;
+            --apple-gray5: #2C2C2E;
+            --apple-gray6: #1C1C1E;
+            
+            /* Backgrounds */
+            --bg-primary: #000000;
+            --bg-secondary: #1C1C1E;
+            --bg-tertiary: #2C2C2E;
+            --bg-elevated: #3A3A3C;
+            
+            /* Text */
+            --text-primary: #FFFFFF;
+            --text-secondary: #8E8E93;
+            --text-tertiary: #636366;
+            
+            /* Typography */
+            --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            --font-size-caption2: 11px;
+            --font-size-caption: 12px;
+            --font-size-footnote: 13px;
+            --font-size-subhead: 15px;
+            --font-size-body: 17px;
+            --font-size-title3: 20px;
+            --font-size-title2: 22px;
+            --font-size-title: 28px;
+            --font-size-largeTitle: 34px;
+            
+            /* Spacing */
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 12px;
+            --spacing-lg: 16px;
+            --spacing-xl: 20px;
+            
+            /* Border Radius */
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: #1c1c1c;
-            color: #e1e1e1;
+            font-family: var(--font-family);
+            background: var(--bg-primary);
+            color: var(--text-primary);
             min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
         }
+        
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 20px;
+            padding: var(--spacing-xl);
         }
+        
         h1 {
-            font-size: 1.5rem;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        h1::before {
-            content: "📍";
+            font-size: var(--font-size-largeTitle);
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: var(--spacing-xl);
         }
         
         /* Tracked Devices - Pill Buttons */
         .tracked-devices-section {
-            margin-bottom: 20px;
+            margin-bottom: var(--spacing-xl);
         }
+        
         .tracked-devices-row {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
-            min-height: 44px;
+            gap: var(--spacing-md);
+            min-height: 50px;
             align-items: center;
         }
+        
         .tracked-pill {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 12px 8px 16px;
-            background: #2a2a2a;
-            border-radius: 50px;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) var(--spacing-lg);
+            background: var(--bg-tertiary);
+            border-radius: 25px;
             cursor: pointer;
-            transition: all 0.2s;
-            border: 2px solid #444;
-            font-size: 14px;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
         }
+        
         .tracked-pill:hover {
-            background: #3a3a3a;
+            background: var(--bg-elevated);
         }
+        
         .tracked-pill.selected {
-            border-color: #0d6efd;
-            background: #1a3a5c;
-            box-shadow: 0 0 12px rgba(13, 110, 253, 0.4);
+            border-color: var(--apple-blue);
+            background: rgba(0, 122, 255, 0.2);
         }
+        
         .tracked-pill .device-name {
+            font-size: var(--font-size-subhead);
             font-weight: 500;
             max-width: 150px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
+        
         .tracked-pill .device-state {
-            font-size: 0.75rem;
-            padding: 2px 8px;
+            font-size: var(--font-size-caption);
+            padding: 3px 8px;
             border-radius: 10px;
-            background: #444;
+            background: var(--apple-gray4);
+            color: var(--text-secondary);
         }
+        
         .tracked-pill .device-state.home {
-            background: #1e4d2b;
-            color: #4ade80;
+            background: rgba(52, 199, 89, 0.2);
+            color: var(--apple-green);
         }
+        
         .tracked-pill .device-state.not_home,
         .tracked-pill .device-state.away {
-            background: #4d3a1e;
-            color: #fbbf24;
+            background: rgba(255, 149, 0, 0.2);
+            color: var(--apple-yellow);
         }
+        
+        .tracked-pill .battery-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: var(--font-size-caption);
+        }
+        
         .tracked-pill .remove-btn {
-            width: 22px;
-            height: 22px;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
             border: none;
-            background: #5a2d2d;
-            color: #f87171;
+            background: rgba(255, 59, 48, 0.2);
+            color: var(--apple-red);
             font-size: 14px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.2s;
-            margin-left: 4px;
         }
+        
         .tracked-pill .remove-btn:hover {
-            background: #dc3545;
+            background: var(--apple-red);
             color: white;
         }
+        
         .no-tracked-msg {
-            color: #666;
-            font-style: italic;
-            padding: 10px 0;
+            color: var(--text-secondary);
+            font-size: var(--font-size-subhead);
+            padding: var(--spacing-md) 0;
         }
         
         /* Collapsible More Devices Section */
         .more-devices-section {
-            margin-bottom: 20px;
+            margin-bottom: var(--spacing-xl);
         }
+        
         .more-devices-header {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 12px 15px;
-            background: #2a2a2a;
-            border-radius: 8px;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
             cursor: pointer;
             transition: all 0.2s;
-            user-select: none;
         }
+        
         .more-devices-header:hover {
-            background: #3a3a3a;
+            background: var(--bg-elevated);
         }
+        
         .more-devices-header .arrow {
             transition: transform 0.3s;
-            font-size: 0.8rem;
+            color: var(--text-secondary);
         }
+        
         .more-devices-header.expanded .arrow {
             transform: rotate(90deg);
         }
-        .more-devices-header .count {
-            color: #888;
-        }
+        
         .more-devices-content {
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.3s ease-out;
         }
+        
         .more-devices-content.expanded {
             max-height: 1000px;
         }
+        
         .devices-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 12px;
-            padding-top: 15px;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: var(--spacing-md);
+            padding-top: var(--spacing-lg);
         }
+        
         .device-card {
-            background: #2a2a2a;
-            border-radius: 10px;
-            padding: 12px 15px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md) var(--spacing-lg);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -166,291 +242,515 @@
             transition: all 0.2s;
             border: 2px solid transparent;
         }
+        
         .device-card:hover {
-            background: #3a3a3a;
-            border-color: #555;
+            background: var(--bg-elevated);
+            border-color: var(--apple-gray3);
         }
-        .device-info {
-            flex: 1;
-            min-width: 0;
-        }
+        
         .device-info .device-name {
+            font-size: var(--font-size-subhead);
             font-weight: 500;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
+        
         .device-info .device-state {
-            font-size: 0.8rem;
-            color: #888;
+            font-size: var(--font-size-caption);
+            color: var(--text-secondary);
             margin-top: 2px;
         }
-        .device-info .device-state.home { color: #198754; }
-        .device-info .device-state.away,
-        .device-info .device-state.not_home { color: #ffc107; }
         
         .add-btn {
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             border: none;
-            background: #2d5a3d;
-            color: #4ade80;
-            font-size: 1.2rem;
-            font-weight: bold;
+            background: rgba(52, 199, 89, 0.2);
+            color: var(--apple-green);
+            font-size: 1.4rem;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.2s;
-            flex-shrink: 0;
-            margin-left: 10px;
-        }
-        .add-btn:hover {
-            background: #198754;
-            color: white;
-            transform: scale(1.1);
         }
         
-        /* Controls & Stats */
+        .add-btn:hover {
+            background: var(--apple-green);
+            color: white;
+            transform: scale(1.05);
+        }
+        
+        /* Controls Row */
         .controls-row {
             display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
             flex-wrap: wrap;
             align-items: center;
         }
+        
         select, button {
-            padding: 10px 15px;
-            border: 1px solid #444;
-            border-radius: 8px;
-            background: #2a2a2a;
-            color: #e1e1e1;
-            font-size: 14px;
+            padding: var(--spacing-md) var(--spacing-lg);
+            border: 1px solid var(--apple-gray4);
+            border-radius: var(--radius-md);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-family: var(--font-family);
+            font-size: var(--font-size-subhead);
             cursor: pointer;
-        }
-        select:hover, button:hover {
-            background: #3a3a3a;
-        }
-        button.primary {
-            background: #0d6efd;
-            border-color: #0d6efd;
-        }
-        button.primary:hover {
-            background: #0b5ed7;
+            transition: all 0.2s;
         }
         
+        select:hover, button:hover {
+            background: var(--bg-elevated);
+        }
+        
+        button.primary {
+            background: var(--apple-blue);
+            border-color: var(--apple-blue);
+            font-weight: 600;
+        }
+        
+        button.primary:hover {
+            background: #0056CC;
+        }
+        
+        /* Stats */
         .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 12px;
-            margin-bottom: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
         }
+        
         .stat-card {
-            background: #2a2a2a;
-            border-radius: 10px;
-            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
             text-align: center;
         }
+        
         .stat-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #0d6efd;
+            font-size: var(--font-size-title2);
+            font-weight: 700;
+            color: var(--apple-blue);
         }
+        
         .stat-label {
-            font-size: 0.8rem;
-            color: #888;
-            margin-top: 3px;
+            font-size: var(--font-size-caption);
+            color: var(--text-secondary);
+            margin-top: var(--spacing-xs);
         }
-        .stat-card.success .stat-value { color: #198754; }
-        .stat-card.danger .stat-value { color: #dc3545; }
+        
+        .stat-card.success .stat-value { color: var(--apple-green); }
+        .stat-card.danger .stat-value { color: var(--apple-red); }
         
         /* Map */
         .map-container {
             position: relative;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
         }
+        
         #map {
             width: 100%;
             height: 500px;
-            border-radius: 10px;
-            overflow: hidden;
         }
+        
         .map-controls {
             position: absolute;
-            bottom: 30px;
+            bottom: 10px;
             left: 10px;
             z-index: 1000;
-            background: rgba(42, 42, 42, 0.95);
-            padding: 8px 12px;
-            border-radius: 8px;
+            background: var(--bg-secondary);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-md);
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 13px;
+            gap: var(--spacing-sm);
+            font-size: var(--font-size-footnote);
+            box-shadow: var(--shadow-md);
         }
+        
         .map-controls label {
             display: flex;
             align-items: center;
             gap: 6px;
             cursor: pointer;
         }
+        
         .map-controls input[type="checkbox"] {
             width: 16px;
             height: 16px;
             cursor: pointer;
-        }
-        
-        /* Error/Loading */
-        .loading { text-align: center; padding: 30px; color: #888; }
-        .error {
-            background: #dc3545;
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-        }
-        .info-message {
-            background: #2a4a6a;
-            color: #a8d4ff;
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
+            accent-color: var(--apple-blue);
         }
         
         /* Time Slider */
         .time-slider-container {
-            margin: 15px 0;
-            padding: 15px;
-            background: #2a2a2a;
-            border-radius: 10px;
+            margin: var(--spacing-lg) 0;
+            padding: var(--spacing-lg);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
         }
+        
         .time-slider-container label {
             display: block;
-            margin-bottom: 10px;
-            color: #888;
+            margin-bottom: var(--spacing-md);
+            color: var(--text-secondary);
+            font-size: var(--font-size-footnote);
         }
+        
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+        
         input[type="range"] {
-            width: 100%;
+            flex: 1;
             height: 6px;
             -webkit-appearance: none;
-            background: #444;
+            background: var(--apple-gray4);
             border-radius: 3px;
             outline: none;
         }
+        
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 18px;
-            height: 18px;
-            background: #0d6efd;
+            width: 20px;
+            height: 20px;
+            background: var(--apple-blue);
             border-radius: 50%;
             cursor: pointer;
+            box-shadow: var(--shadow-sm);
         }
+        
         #current-time {
             text-align: center;
-            margin-top: 10px;
-            font-size: 1rem;
+            margin-top: var(--spacing-md);
+            font-size: var(--font-size-subhead);
+            color: var(--text-secondary);
+        }
+        
+        #play-btn {
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            border-radius: 50%;
         }
         
         /* Legend */
         .legend {
             display: flex;
-            gap: 20px;
+            gap: var(--spacing-xl);
             justify-content: center;
-            margin-top: 15px;
+            margin-top: var(--spacing-lg);
             flex-wrap: wrap;
         }
+        
         .legend-item {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 0.9rem;
+            gap: 8px;
+            font-size: var(--font-size-footnote);
+            color: var(--text-secondary);
         }
+        
         .legend-dot {
             width: 12px;
             height: 12px;
             border-radius: 50%;
         }
-        .legend-dot.known { background: #198754; }
-        .legend-dot.unknown { background: #dc3545; }
+        
+        .legend-dot.known { background: var(--apple-green); }
+        .legend-dot.unknown { background: var(--apple-red); }
         .legend-dot.heat { 
             background: linear-gradient(90deg, blue, lime, yellow, red);
             width: 40px;
             border-radius: 3px;
         }
         
-        /* Enhanced Popup Styles */
+        /* Apple-Style Popup */
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-secondary) !important;
+            border-radius: var(--radius-lg) !important;
+            box-shadow: var(--shadow-lg) !important;
+            padding: 0 !important;
+        }
+        
         .leaflet-popup-content {
             margin: 0 !important;
+            color: var(--text-primary);
         }
-        .location-popup {
-            min-width: 220px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            font-size: 13px;
-            line-height: 1.4;
+        
+        .leaflet-popup-tip {
+            background: var(--bg-secondary) !important;
         }
+        
+        .apple-popup {
+            font-family: var(--font-family);
+            min-width: 280px;
+            max-width: 320px;
+        }
+        
         .popup-header {
-            padding: 10px 12px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #dee2e6;
-            border-radius: 4px 4px 0 0;
+            padding: var(--spacing-lg);
+            border-bottom: 1px solid var(--apple-gray4);
         }
+        
         .popup-header .device-name {
-            font-size: 14px;
+            font-size: var(--font-size-title3);
             font-weight: 600;
-            color: #212529;
+            letter-spacing: -0.5px;
         }
+        
         .popup-section {
-            padding: 10px 12px;
-            border-bottom: 1px solid #eee;
+            padding: var(--spacing-md) var(--spacing-lg);
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-sm);
+            border-bottom: 1px solid var(--apple-gray4);
         }
-        .popup-section:last-child {
+        
+        .popup-section:last-of-type {
             border-bottom: none;
         }
-        .popup-section.location .place-name {
+        
+        .popup-section .icon {
+            font-size: 20px;
+            flex-shrink: 0;
+            width: 28px;
+            text-align: center;
+        }
+        
+        .popup-section .content {
+            flex: 1;
+        }
+        
+        .popup-section .place-name {
+            font-size: var(--font-size-body);
             font-weight: 500;
-            color: #212529;
-            margin-bottom: 2px;
         }
-        .popup-section.location .place-address {
-            font-size: 12px;
-            color: #666;
-        }
-        .popup-section.timing .timestamp {
-            margin-bottom: 4px;
-            color: #495057;
-        }
-        .popup-section.timing .duration {
-            font-weight: 600;
-            color: #0d6efd;
-        }
-        .popup-section.origin .from-label {
-            font-weight: 500;
-            color: #495057;
-        }
-        .popup-section.origin .from-address {
-            font-size: 12px;
-            color: #666;
+        
+        .popup-section .place-address {
+            font-size: var(--font-size-footnote);
+            color: var(--text-secondary);
             margin-top: 2px;
         }
-        .popup-section.origin .from-distance {
-            font-size: 12px;
-            color: #888;
-            margin-top: 4px;
+        
+        .popup-section.timing {
+            flex-direction: column;
+            gap: var(--spacing-xs);
         }
+        
+        .timing-row {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-size: var(--font-size-subhead);
+        }
+        
+        .timing-row .icon {
+            width: 28px;
+            text-align: center;
+        }
+        
+        .popup-section.origin {
+            font-size: var(--font-size-subhead);
+        }
+        
+        .origin-arrow {
+            color: var(--apple-blue);
+            font-weight: 600;
+        }
+        
+        .origin-details {
+            flex: 1;
+        }
+        
+        .origin-name {
+            font-weight: 500;
+        }
+        
+        .origin-address {
+            font-size: var(--font-size-caption);
+            color: var(--text-secondary);
+        }
+        
+        .origin-distance {
+            color: var(--text-secondary);
+            font-size: var(--font-size-footnote);
+        }
+        
+        /* Battery Section */
+        .popup-section.battery {
+            align-items: center;
+        }
+        
+        .battery-info {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+        
+        .battery-percentage {
+            font-size: var(--font-size-subhead);
+            font-weight: 600;
+            min-width: 45px;
+        }
+        
+        .battery-bar {
+            flex: 1;
+            height: 8px;
+            background: var(--apple-gray4);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .battery-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .charging-indicator {
+            font-size: 16px;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Meta Section */
+        .popup-meta {
+            padding: var(--spacing-sm) var(--spacing-lg);
+            text-align: center;
+            font-size: var(--font-size-caption);
+            color: var(--text-tertiary);
+        }
+        
+        /* Update Button */
+        .update-button {
+            width: calc(100% - var(--spacing-lg) * 2);
+            margin: var(--spacing-md) var(--spacing-lg) var(--spacing-lg);
+            padding: var(--spacing-md);
+            background: var(--apple-blue);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: var(--font-family);
+            font-size: var(--font-size-subhead);
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            transition: all 0.2s ease;
+        }
+        
+        .update-button:hover {
+            background: #0056CC;
+        }
+        
+        .update-button:active {
+            transform: scale(0.98);
+        }
+        
+        .update-button.loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        
+        .update-button.loading .update-icon {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Toast Notifications */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10000;
+            pointer-events: none;
+        }
+        
+        .toast {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            padding: var(--spacing-md) var(--spacing-xl);
+            border-radius: var(--radius-xl);
+            font-size: var(--font-size-subhead);
+            font-weight: 500;
+            box-shadow: var(--shadow-lg);
+            animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .toast.error {
+            background: var(--apple-red);
+        }
+        
+        .toast.success {
+            background: var(--apple-green);
+        }
+        
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes toastOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        
+        /* Loading/Error States */
+        .loading { 
+            text-align: center; 
+            padding: var(--spacing-xl); 
+            color: var(--text-secondary); 
+        }
+        
+        .error {
+            background: var(--apple-red);
+            color: white;
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-lg);
+        }
+        
         .popup-loading {
-            color: #888;
+            color: var(--text-secondary);
             font-style: italic;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Find My Location History</h1>
+        <h1>📍 Find My</h1>
+        
+        <!-- Toast Container -->
+        <div id="toast-container"></div>
         
         <!-- Tracked Devices as Pills -->
         <div class="tracked-devices-section">
             <div class="tracked-devices-row" id="tracked-devices-row">
-                <div class="loading">Loading...</div>
+                <div class="loading">Loading devices...</div>
             </div>
         </div>
         
@@ -469,8 +769,8 @@
         
         <!-- Controls Row -->
         <div class="controls-row" id="controls-row" style="display: none;">
-            <span style="color: #888;">Viewing:</span>
-            <strong id="selected-device-name" style="color: #a8d4ff;">-</strong>
+            <span style="color: var(--text-secondary);">Viewing:</span>
+            <strong id="selected-device-name" style="color: var(--apple-blue);">-</strong>
             <select id="time-range" style="margin-left: auto;">
                 <option value="1h">Last 1 hour</option>
                 <option value="6h">Last 6 hours</option>
@@ -508,9 +808,9 @@
 
         <div class="time-slider-container">
             <label>Time Navigation <span id="point-info">(0 points)</span></label>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <button id="play-btn" onclick="togglePlay()" style="width: 50px;">▶</button>
-                <input type="range" id="time-slider" min="0" max="100" value="100" style="flex: 1;">
+            <div class="slider-row">
+                <button id="play-btn" onclick="togglePlay()">▶</button>
+                <input type="range" id="time-slider" min="0" max="100" value="100">
             </div>
             <div id="current-time">Select a tracked device to view history</div>
         </div>
@@ -547,10 +847,17 @@
         let baseLayers = {};
         let layerControl = null;
         
-        // ===== Helper Functions for Enhanced Popups =====
+        // ===== Helper Functions =====
         
         const PLACE_CACHE_KEY = 'places_cache';
         const PLACE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+        
+        function getBatteryColor(level, isCharging) {
+            if (isCharging) return 'var(--apple-green)';
+            if (level > 20) return 'var(--apple-green)';
+            if (level > 10) return 'var(--apple-yellow)';
+            return 'var(--apple-red)';
+        }
         
         function formatTimestamp(date) {
             const now = new Date();
@@ -569,6 +876,16 @@
             return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + `, ${time}`;
         }
         
+        function formatRelativeTime(date) {
+            const now = new Date();
+            const diff = Math.floor((now - new Date(date)) / 1000);
+            
+            if (diff < 60) return 'just now';
+            if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+            return new Date(date).toLocaleDateString();
+        }
+        
         function formatDuration(ms) {
             const minutes = Math.floor(ms / 60000);
             if (minutes < 1) return '< 1 min';
@@ -584,12 +901,12 @@
         }
         
         function formatDistance(meters) {
-            if (meters < 1000) return `${Math.round(meters)} m away`;
-            return `${(meters / 1000).toFixed(1)} km away`;
+            if (meters < 1000) return `${Math.round(meters)} m`;
+            return `${(meters / 1000).toFixed(1)} km`;
         }
         
         function getDistance(loc1, loc2) {
-            const R = 6371000; // Earth radius in meters
+            const R = 6371000;
             const lat1 = loc1.latitude * Math.PI / 180;
             const lat2 = loc2.latitude * Math.PI / 180;
             const dLat = (loc2.latitude - loc1.latitude) * Math.PI / 180;
@@ -602,9 +919,8 @@
         
         function calculateDuration(locs, idx) {
             const current = locs[idx];
-            const RADIUS = 100; // meters
+            const RADIUS = 100;
             
-            // Find first point in this cluster (going backwards)
             let startIndex = idx;
             while (startIndex > 0) {
                 const prev = locs[startIndex - 1];
@@ -612,7 +928,6 @@
                 startIndex--;
             }
             
-            // Find last point in this cluster (going forwards)
             let endIndex = idx;
             while (endIndex < locs.length - 1) {
                 const next = locs[endIndex + 1];
@@ -622,32 +937,29 @@
             
             const arrival = new Date(locs[startIndex].time);
             const departure = new Date(locs[endIndex].time);
-            return departure - arrival; // milliseconds
+            return departure - arrival;
         }
         
         function findPreviousStableLocation(locs, idx) {
             if (idx <= 0) return null;
             
             const current = locs[idx];
-            const RADIUS = 100; // meters
-            const MIN_STABLE_TIME = 30 * 60 * 1000; // 30 minutes
+            const RADIUS = 100;
+            const MIN_STABLE_TIME = 30 * 60 * 1000;
             
-            // Step 1: Skip past current location cluster
             let searchIndex = idx;
             while (searchIndex > 0) {
                 const prev = locs[searchIndex - 1];
                 if (getDistance(current, prev) > RADIUS) break;
                 searchIndex--;
             }
-            searchIndex--; // Move to first point outside current cluster
+            searchIndex--;
             
             if (searchIndex < 0) return null;
             
-            // Step 2: Search backwards for a stable location
             while (searchIndex >= 0) {
                 const candidate = locs[searchIndex];
                 
-                // Find cluster boundaries for this candidate
                 let clusterStart = searchIndex;
                 while (clusterStart > 0) {
                     if (getDistance(candidate, locs[clusterStart - 1]) > RADIUS) break;
@@ -660,7 +972,6 @@
                     clusterEnd++;
                 }
                 
-                // Check if stable (30+ minutes)
                 const duration = new Date(locs[clusterEnd].time) - new Date(locs[clusterStart].time);
                 
                 if (duration >= MIN_STABLE_TIME) {
@@ -671,18 +982,16 @@
                     };
                 }
                 
-                // Move to before this cluster and continue searching
                 searchIndex = clusterStart - 1;
             }
             
             return null;
         }
         
-        // Nominatim reverse geocoding + Overpass for nearby POIs (free, no API key needed)
+        // Nominatim + Overpass for place lookup
         let nominatimQueue = [];
         let nominatimProcessing = false;
         
-        // Search for nearby POIs using Overpass API
         async function searchNearbyPOIs(lat, lng, radiusMeters = 30) {
             const query = `
                 [out:json][timeout:5];
@@ -691,8 +1000,6 @@
                     way["name"]["building"](around:${radiusMeters},${lat},${lng});
                     node["amenity"](around:${radiusMeters},${lat},${lng});
                     node["shop"](around:${radiusMeters},${lat},${lng});
-                    node["tourism"](around:${radiusMeters},${lat},${lng});
-                    node["leisure"](around:${radiusMeters},${lat},${lng});
                 );
                 out body 1;
             `.trim();
@@ -705,16 +1012,12 @@
                 const data = await response.json();
                 
                 if (data.elements && data.elements.length > 0) {
-                    // Find the best result (prefer ones with names and specific types)
                     const scored = data.elements.map(el => {
                         const tags = el.tags || {};
                         let score = 0;
                         if (tags.name) score += 10;
                         if (tags.amenity) score += 5;
                         if (tags.shop) score += 5;
-                        if (tags.tourism) score += 4;
-                        if (tags.leisure) score += 3;
-                        // Exclude generic things like parking, etc.
                         if (tags.amenity === 'parking' || tags.amenity === 'bench') score -= 10;
                         return { el, score, name: tags.name };
                     }).filter(x => x.name && x.score > 0)
@@ -737,9 +1040,8 @@
             const { lat, lng, resolve } = nominatimQueue.shift();
             
             try {
-                // Run both queries in parallel: Nominatim for address + Overpass for nearby POIs
                 const [nominatimResult, nearbyPOI] = await Promise.all([
-                    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&extratags=1&zoom=18`, {
+                    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&zoom=18`, {
                         headers: { 'User-Agent': 'FindMyHistory/1.0' }
                     }).then(r => r.json()).catch(() => ({})),
                     searchNearbyPOIs(lat, lng, 30)
@@ -748,58 +1050,23 @@
                 const data = nominatimResult;
                 const addr = data.address || {};
                 
-                // Try to get a meaningful POI/business name from Nominatim
-                const nominatimPOI = data.name || 
-                               addr.amenity || 
-                               addr.shop ||
-                               addr.office ||
-                               addr.leisure ||
-                               addr.tourism ||
-                               addr.craft ||
-                               addr.healthcare ||
-                               addr.club;
-                
-                // Build street address
-                const road = addr.road || addr.street || addr.path || addr.pedestrian;
+                const nominatimPOI = data.name || addr.amenity || addr.shop || addr.office;
+                const road = addr.road || addr.street || addr.path;
                 const houseNumber = addr.house_number;
                 const streetAddr = houseNumber && road ? `${road} ${houseNumber}` : road;
+                const area = addr.suburb || addr.neighbourhood || addr.city;
                 
-                // Build area/city info for context
-                const area = addr.suburb || addr.neighbourhood || addr.district || addr.city_district;
-                const city = addr.city || addr.town || addr.village || addr.municipality;
-                const areaInfo = [area, city].filter(Boolean).join(', ');
-                
-                // Use nearby POI from Overpass if found, otherwise fall back to Nominatim POI
                 const businessName = nearbyPOI || (nominatimPOI && nominatimPOI !== road ? nominatimPOI : null);
                 
                 let result;
                 if (businessName) {
-                    // We have a business/POI name - show it with street as secondary
-                    result = {
-                        primary: businessName,
-                        secondary: streetAddr || areaInfo || null,
-                        icon: '📍'
-                    };
+                    result = { primary: businessName, secondary: streetAddr || area || null, icon: '📍' };
                 } else if (streetAddr) {
-                    // No POI, but we have a street - show it with area as secondary
-                    result = {
-                        primary: streetAddr,
-                        secondary: areaInfo || null,
-                        icon: '📍'
-                    };
-                } else if (areaInfo) {
-                    // Just area info
-                    result = {
-                        primary: areaInfo,
-                        secondary: null,
-                        icon: '📍'
-                    };
+                    result = { primary: streetAddr, secondary: area || null, icon: '📍' };
+                } else if (area) {
+                    result = { primary: area, secondary: null, icon: '📍' };
                 } else {
-                    result = {
-                        primary: 'Unknown location',
-                        secondary: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
-                        icon: '📍'
-                    };
+                    result = { primary: 'Unknown location', secondary: `${lat.toFixed(4)}, ${lng.toFixed(4)}`, icon: '📍' };
                 }
                 
                 resolve(result);
@@ -808,7 +1075,6 @@
             }
             
             nominatimProcessing = false;
-            // Rate limit: 1 request per second
             setTimeout(processNominatimQueue, 1100);
         }
         
@@ -840,45 +1106,43 @@
                 const cache = JSON.parse(localStorage.getItem(PLACE_CACHE_KEY) || '{}');
                 const key = getCacheKey(lat, lng);
                 cache[key] = { data: placeData, timestamp: Date.now() };
-                
-                // Limit cache size to ~500 entries
                 const keys = Object.keys(cache);
                 if (keys.length > 500) {
                     keys.slice(0, keys.length - 500).forEach(k => delete cache[k]);
                 }
-                
                 localStorage.setItem(PLACE_CACHE_KEY, JSON.stringify(cache));
             } catch (e) {}
         }
         
         async function getLocationDisplayName(location) {
-            // 1. Check if in known HA zone
             if (location.in_zone && location.zone_name) {
-                return {
-                    primary: location.zone_name,
-                    secondary: null,
-                    icon: '🏠'
-                };
+                return { primary: location.zone_name, secondary: null, icon: '🏠' };
             }
             
-            // 2. Check cache
             const cached = getCachedPlace(location.latitude, location.longitude);
             if (cached) return cached;
             
-            // 3. Try Nominatim
             const place = await getNominatimPlace(location.latitude, location.longitude);
             if (place) {
                 cachePlace(location.latitude, location.longitude, place);
                 return place;
             }
             
-            // 4. Fallback to coordinates
-            return {
-                primary: 'Unknown location',
-                secondary: `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`,
-                icon: '📍'
-            };
+            return { primary: 'Unknown location', secondary: `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`, icon: '📍' };
         }
+        
+        // ===== Toast Notifications =====
+        
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        // ===== Popup Creation =====
         
         function createPopupContent(loc, idx, placeName = null, prevPlaceName = null) {
             const deviceName = loc.device_name || loc.device_id;
@@ -886,70 +1150,123 @@
             const duration = calculateDuration(locations, idx);
             const durationStr = formatDuration(duration);
             const prevLocation = findPreviousStableLocation(locations, idx);
+            const lastUpdated = formatRelativeTime(loc.time);
             
+            // Battery info
+            const batteryLevel = loc.battery_level;
+            const batteryState = loc.battery_state;
+            const isCharging = batteryState === 'charging';
+            const batteryColor = batteryLevel != null ? getBatteryColor(batteryLevel, isCharging) : 'var(--apple-gray)';
+            
+            // Location section
             let locationHtml = '';
             if (placeName) {
                 locationHtml = `
-                    <div class="popup-section location">
-                        <div class="place-name">${placeName.icon} ${placeName.primary}</div>
-                        ${placeName.secondary ? `<div class="place-address">${placeName.secondary}</div>` : ''}
+                    <div class="popup-section">
+                        <div class="icon">${placeName.icon}</div>
+                        <div class="content">
+                            <div class="place-name">${placeName.primary}</div>
+                            ${placeName.secondary ? `<div class="place-address">${placeName.secondary}</div>` : ''}
+                        </div>
                     </div>
                 `;
             } else {
                 locationHtml = `
-                    <div class="popup-section location">
-                        <div class="place-name popup-loading">📍 Loading location...</div>
+                    <div class="popup-section">
+                        <div class="icon">📍</div>
+                        <div class="content">
+                            <div class="place-name popup-loading">Loading location...</div>
+                        </div>
                     </div>
                 `;
             }
             
+            // Origin section
             let originHtml = '';
             if (idx === 0) {
                 originHtml = `
                     <div class="popup-section origin">
-                        <div class="from-label">← Start of tracking</div>
+                        <div class="icon origin-arrow">←</div>
+                        <div class="origin-details">
+                            <div class="origin-name">Start of tracking</div>
+                        </div>
                     </div>
                 `;
             } else if (prevLocation) {
-                // Show rich location info for "From" section
                 if (prevPlaceName) {
                     originHtml = `
                         <div class="popup-section origin">
-                            <div class="from-label">← From: ${prevPlaceName.primary}</div>
-                            ${prevPlaceName.secondary ? `<div class="from-address">${prevPlaceName.secondary}</div>` : ''}
-                            <div class="from-distance">${formatDistance(prevLocation.distance)}</div>
+                            <div class="icon origin-arrow">←</div>
+                            <div class="origin-details">
+                                <div class="origin-name">From: ${prevPlaceName.primary}</div>
+                                ${prevPlaceName.secondary ? `<div class="origin-address">${prevPlaceName.secondary}</div>` : ''}
+                                <div class="origin-distance">${formatDistance(prevLocation.distance)} away</div>
+                            </div>
                         </div>
                     `;
                 } else if (prevLocation.zoneName) {
-                    // Known zone - show zone name
                     originHtml = `
                         <div class="popup-section origin">
-                            <div class="from-label">← From: 🏠 ${prevLocation.zoneName}</div>
-                            <div class="from-distance">${formatDistance(prevLocation.distance)}</div>
+                            <div class="icon origin-arrow">←</div>
+                            <div class="origin-details">
+                                <div class="origin-name">From: 🏠 ${prevLocation.zoneName}</div>
+                                <div class="origin-distance">${formatDistance(prevLocation.distance)} away</div>
+                            </div>
                         </div>
                     `;
                 } else {
-                    // Still loading
                     originHtml = `
                         <div class="popup-section origin">
-                            <div class="from-label popup-loading">← From: Loading...</div>
-                            <div class="from-distance">${formatDistance(prevLocation.distance)}</div>
+                            <div class="icon origin-arrow">←</div>
+                            <div class="origin-details">
+                                <div class="origin-name popup-loading">From: Loading...</div>
+                                <div class="origin-distance">${formatDistance(prevLocation.distance)} away</div>
+                            </div>
                         </div>
                     `;
                 }
             }
             
+            // Battery section
+            let batteryHtml = '';
+            if (batteryLevel != null) {
+                batteryHtml = `
+                    <div class="popup-section battery">
+                        <div class="icon">🔋</div>
+                        <div class="battery-info">
+                            <div class="battery-percentage" style="color: ${batteryColor}">${batteryLevel}%</div>
+                            <div class="battery-bar">
+                                <div class="battery-fill" style="width: ${batteryLevel}%; background: ${batteryColor};"></div>
+                            </div>
+                            ${isCharging ? '<div class="charging-indicator">⚡</div>' : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
             return `
-                <div class="location-popup">
+                <div class="apple-popup">
                     <div class="popup-header">
                         <div class="device-name">${deviceName}</div>
                     </div>
                     ${locationHtml}
                     <div class="popup-section timing">
-                        <div class="timestamp">🕐 ${timestamp}</div>
-                        <div class="duration">⏱️ Here for ${durationStr}</div>
+                        <div class="timing-row">
+                            <span class="icon">🕐</span>
+                            <span>${timestamp}</span>
+                        </div>
+                        <div class="timing-row">
+                            <span class="icon">⏱️</span>
+                            <span>Here for ${durationStr}</span>
+                        </div>
                     </div>
                     ${originHtml}
+                    ${batteryHtml}
+                    <div class="popup-meta">Last updated: ${lastUpdated}</div>
+                    <button class="update-button" onclick="updateDeviceLocation()">
+                        <span class="update-icon">↻</span>
+                        Update Now
+                    </button>
                 </div>
             `;
         }
@@ -957,19 +1274,15 @@
         async function updatePopupWithPlace(popup, loc, idx) {
             const prevLocation = findPreviousStableLocation(locations, idx);
             
-            // Fetch current location place name
             const placeNamePromise = getLocationDisplayName(loc);
             
-            // Fetch previous location place name (if exists and not a known zone)
             let prevPlaceNamePromise = null;
             if (prevLocation && !prevLocation.zoneName) {
                 prevPlaceNamePromise = getLocationDisplayName(prevLocation.location);
             }
             
-            // Wait for current location first and update
             const placeName = await placeNamePromise;
             
-            // Get previous place name if we're fetching it
             let prevPlaceName = null;
             if (prevPlaceNamePromise) {
                 prevPlaceName = await prevPlaceNamePromise;
@@ -977,8 +1290,45 @@
             
             popup.setContent(createPopupContent(loc, idx, placeName, prevPlaceName));
         }
+        
+        // ===== Update Device Location =====
+        
+        async function updateDeviceLocation() {
+            if (!selectedDeviceId) return;
+            
+            const button = document.querySelector('.update-button');
+            if (button) {
+                button.classList.add('loading');
+                button.disabled = true;
+            }
+            
+            try {
+                const response = await fetch('./api/devices/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_id: selectedDeviceId })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    await loadData();
+                    showToast('Location updated', 'success');
+                } else {
+                    showToast(result.error || 'Update failed', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to update location', 'error');
+            } finally {
+                if (button) {
+                    button.classList.remove('loading');
+                    button.disabled = false;
+                }
+            }
+        }
 
-        // Initialize
+        // ===== Initialize =====
+        
         document.addEventListener('DOMContentLoaded', function() {
             map = L.map('map').setView([54.9, 23.9], 10);
             
@@ -989,23 +1339,8 @@
                     maxZoom: 19
                 }),
                 'Satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                    attribution: '© Esri, Maxar, Earthstar Geographics',
+                    attribution: '© Esri',
                     maxZoom: 18
-                }),
-                'Satellite + Labels': L.layerGroup([
-                    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                        attribution: '© Esri',
-                        maxZoom: 18
-                    }),
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '',
-                        maxZoom: 19,
-                        opacity: 0.4
-                    })
-                ]),
-                'Terrain': L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenTopoMap',
-                    maxZoom: 17
                 }),
                 'Dark': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
                     attribution: '© CartoDB',
@@ -1013,14 +1348,11 @@
                 })
             };
             
-            // Add default layer
             const savedLayer = localStorage.getItem('preferredMapLayer') || 'Street Map';
             (baseLayers[savedLayer] || baseLayers['Street Map']).addTo(map);
             
-            // Add layer control
             layerControl = L.control.layers(baseLayers, {}, { position: 'topright' }).addTo(map);
             
-            // Save layer preference when changed
             map.on('baselayerchange', function(e) {
                 localStorage.setItem('preferredMapLayer', e.name);
             });
@@ -1039,7 +1371,6 @@
             
             document.getElementById('time-range').addEventListener('change', loadData);
             
-            // Restore collapse state
             moreDevicesExpanded = localStorage.getItem('moreDevicesExpanded') === 'true';
         });
         
@@ -1101,14 +1432,11 @@
             
             if (locations.length === 0) return;
             
-            // Calculate intensity based on time spent
-            // Group nearby points and sum time
             const heatData = [];
             const groups = [];
-            const PROXIMITY_THRESHOLD = 0.0005; // ~50 meters
+            const PROXIMITY_THRESHOLD = 0.0005;
             
             locations.forEach((loc, i) => {
-                // Find if there's an existing group nearby
                 let foundGroup = null;
                 for (const group of groups) {
                     const dist = Math.sqrt(
@@ -1123,7 +1451,6 @@
                 
                 if (foundGroup) {
                     foundGroup.count++;
-                    // Update centroid
                     foundGroup.lat = (foundGroup.lat * (foundGroup.count - 1) + loc.latitude) / foundGroup.count;
                     foundGroup.lon = (foundGroup.lon * (foundGroup.count - 1) + loc.longitude) / foundGroup.count;
                 } else {
@@ -1131,7 +1458,6 @@
                 }
             });
             
-            // Normalize and create heat data
             const maxCount = Math.max(...groups.map(g => g.count), 1);
             groups.forEach(g => {
                 const intensity = Math.min(g.count / maxCount, 1) * 0.8 + 0.2;
@@ -1175,7 +1501,6 @@
             const tracked = devices.filter(d => d.is_tracked);
             const untracked = devices.filter(d => !d.is_tracked);
             
-            // Render tracked devices as pills
             if (tracked.length === 0) {
                 trackedRow.innerHTML = '<span class="no-tracked-msg">No devices tracked. Add devices from the list below.</span>';
             } else {
@@ -1199,7 +1524,6 @@
                 }).join('');
             }
             
-            // Render untracked devices in collapsible section
             if (untracked.length > 0) {
                 moreSection.style.display = 'block';
                 moreCount.textContent = `${untracked.length} more device${untracked.length !== 1 ? 's' : ''}`;
@@ -1221,7 +1545,6 @@
                     `;
                 }).join('');
                 
-                // Apply saved expand state
                 if (moreDevicesExpanded) {
                     moreHeader.classList.add('expanded');
                     moreContent.classList.add('expanded');
@@ -1253,9 +1576,11 @@
                 
                 renderDevices();
                 
-                // If we just tracked a device, select it
                 if (result.is_tracked) {
                     selectDevice(entityId);
+                    showToast('Device tracking enabled', 'success');
+                } else {
+                    showToast('Device tracking disabled');
                 }
                 
             } catch (error) {
@@ -1328,7 +1653,6 @@
                 document.getElementById('time-slider').value = 100;
                 updateCurrentMarker();
                 
-                // Update heatmap if enabled
                 if (document.getElementById('heatmap-toggle').checked) {
                     updateHeatmap();
                 }
@@ -1370,7 +1694,7 @@
             
             const coords = locations.map(l => [l.latitude, l.longitude]);
             L.polyline(coords, {
-                color: '#0d6efd',
+                color: 'var(--apple-blue)',
                 weight: 3,
                 opacity: 0.7
             }).addTo(pathLayer);
@@ -1380,7 +1704,7 @@
             allMarkersLayer.clearLayers();
             
             locations.forEach((loc, index) => {
-                const color = loc.in_zone ? '#198754' : '#dc3545';
+                const color = loc.in_zone ? '#34C759' : '#FF3B30';
                 const size = 8;
                 
                 const icon = L.divIcon({
@@ -1393,11 +1717,9 @@
                 const marker = L.marker([loc.latitude, loc.longitude], { icon })
                     .addTo(allMarkersLayer);
                 
-                // Create initial popup with loading state
-                const popup = L.popup().setContent(createPopupContent(loc, index, null));
+                const popup = L.popup({ maxWidth: 320 }).setContent(createPopupContent(loc, index, null));
                 marker.bindPopup(popup);
                 
-                // Load place name when popup opens
                 marker.on('popupopen', () => {
                     updatePopupWithPlace(popup, loc, index);
                 });
@@ -1417,7 +1739,7 @@
             
             const loc = locations[currentIndex];
             const idx = currentIndex;
-            const color = loc.in_zone ? '#198754' : '#dc3545';
+            const color = loc.in_zone ? '#34C759' : '#FF3B30';
             
             const icon = L.divIcon({
                 className: 'current-marker',
@@ -1429,14 +1751,11 @@
             const marker = L.marker([loc.latitude, loc.longitude], { icon })
                 .addTo(markerLayer);
             
-            // Create popup with initial loading state
-            const popup = L.popup({ maxWidth: 280 }).setContent(createPopupContent(loc, idx, null));
+            const popup = L.popup({ maxWidth: 320 }).setContent(createPopupContent(loc, idx, null));
             marker.bindPopup(popup).openPopup();
             
-            // Load place name asynchronously
             updatePopupWithPlace(popup, loc, idx);
             
-            // Update time slider text
             const timeStr = formatTimestamp(loc.time);
             const duration = calculateDuration(locations, idx);
             const durationStr = formatDuration(duration);
