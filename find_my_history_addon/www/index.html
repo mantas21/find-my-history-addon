@@ -198,9 +198,12 @@
         <div id="map"></div>
 
         <div class="time-slider-container">
-            <label>Time Navigation</label>
-            <input type="range" id="time-slider" min="0" max="100" value="100">
-            <div id="current-time">Current time will appear here</div>
+            <label>Time Navigation <span id="point-info">(0 points)</span></label>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <button id="play-btn" onclick="togglePlay()" style="width: 50px;">▶</button>
+                <input type="range" id="time-slider" min="0" max="100" value="100" style="flex: 1;">
+            </div>
+            <div id="current-time">Select a device with location history</div>
         </div>
 
         <div class="legend">
@@ -219,8 +222,11 @@
         let map;
         let pathLayer;
         let markerLayer;
+        let allMarkersLayer;
         let locations = [];
         let currentIndex = 0;
+        let isPlaying = false;
+        let playInterval = null;
 
         // Initialize map
         document.addEventListener('DOMContentLoaded', function() {
@@ -230,6 +236,7 @@
             }).addTo(map);
             
             pathLayer = L.layerGroup().addTo(map);
+            allMarkersLayer = L.layerGroup().addTo(map);
             markerLayer = L.layerGroup().addTo(map);
             
             loadDevices();
@@ -237,10 +244,33 @@
             // Time slider
             document.getElementById('time-slider').addEventListener('input', function(e) {
                 if (locations.length === 0) return;
-                currentIndex = Math.floor((e.target.value / 100) * (locations.length - 1));
-                updateMarker();
+                currentIndex = Math.floor((e.target.value / 100) * Math.max(locations.length - 1, 0));
+                updateCurrentMarker();
             });
         });
+        
+        function togglePlay() {
+            if (locations.length <= 1) return;
+            
+            isPlaying = !isPlaying;
+            document.getElementById('play-btn').textContent = isPlaying ? '⏸' : '▶';
+            
+            if (isPlaying) {
+                if (currentIndex >= locations.length - 1) currentIndex = 0;
+                playInterval = setInterval(() => {
+                    currentIndex++;
+                    if (currentIndex >= locations.length) {
+                        currentIndex = locations.length - 1;
+                        togglePlay(); // Stop at end
+                        return;
+                    }
+                    document.getElementById('time-slider').value = (currentIndex / (locations.length - 1)) * 100;
+                    updateCurrentMarker();
+                }, 500); // 500ms per point
+            } else {
+                clearInterval(playInterval);
+            }
+        }
 
         async function loadDevices() {
             try {
@@ -303,21 +333,26 @@
                 
                 locations = data.locations || [];
                 
+                // Update point info
+                document.getElementById('point-info').textContent = `(${locations.length} points)`;
+                
                 if (locations.length === 0) {
                     showError('No location data found for the selected time range');
+                    document.getElementById('current-time').textContent = 'No data available';
                     return;
                 }
                 
                 updateStats();
                 updatePath();
+                updateAllMarkers();  // Show all markers
                 currentIndex = locations.length - 1;
                 document.getElementById('time-slider').value = 100;
-                updateMarker();
+                updateCurrentMarker();
                 
                 // Fit map to path
                 if (locations.length > 0) {
                     const coords = locations.map(l => [l.latitude, l.longitude]);
-                    map.fitBounds(coords);
+                    map.fitBounds(coords, { padding: [50, 50] });
                 }
                 
             } catch (error) {
@@ -348,7 +383,38 @@
             }).addTo(pathLayer);
         }
 
-        function updateMarker() {
+        function updateAllMarkers() {
+            allMarkersLayer.clearLayers();
+            
+            // Add small markers for all points
+            locations.forEach((loc, index) => {
+                const color = loc.in_zone ? '#198754' : '#dc3545';
+                const size = 8;
+                
+                const icon = L.divIcon({
+                    className: 'small-marker',
+                    html: `<div style="background:${color}; width:${size}px; height:${size}px; border-radius:50%; border:1px solid white; opacity:0.7;"></div>`,
+                    iconSize: [size, size],
+                    iconAnchor: [size/2, size/2]
+                });
+                
+                L.marker([loc.latitude, loc.longitude], { icon })
+                    .addTo(allMarkersLayer)
+                    .bindPopup(`
+                        <strong>${loc.device_name || loc.device_id}</strong><br>
+                        Time: ${new Date(loc.time).toLocaleString()}<br>
+                        Zone: ${loc.in_zone ? loc.zone_name : 'Unknown'}<br>
+                        Coords: ${loc.latitude.toFixed(5)}, ${loc.longitude.toFixed(5)}
+                    `)
+                    .on('click', () => {
+                        currentIndex = index;
+                        document.getElementById('time-slider').value = (index / Math.max(locations.length - 1, 1)) * 100;
+                        updateCurrentMarker();
+                    });
+            });
+        }
+        
+        function updateCurrentMarker() {
             markerLayer.clearLayers();
             
             if (locations.length === 0) return;
@@ -356,11 +422,12 @@
             const loc = locations[currentIndex];
             const color = loc.in_zone ? '#198754' : '#dc3545';
             
+            // Larger highlighted marker for current selection
             const icon = L.divIcon({
-                className: 'custom-marker',
-                html: `<div style="background:${color}; width:20px; height:20px; border-radius:50%; border:3px solid white; box-shadow:0 2px 5px rgba(0,0,0,0.3);"></div>`,
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
+                className: 'current-marker',
+                html: `<div style="background:${color}; width:24px; height:24px; border-radius:50%; border:4px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.5);"></div>`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
             });
             
             L.marker([loc.latitude, loc.longitude], { icon })
@@ -368,13 +435,15 @@
                 .bindPopup(`
                     <strong>${loc.device_name || loc.device_id}</strong><br>
                     Time: ${new Date(loc.time).toLocaleString()}<br>
-                    Zone: ${loc.zone_name || 'Unknown'}<br>
+                    Zone: ${loc.in_zone ? loc.zone_name : 'Unknown'}<br>
                     Coords: ${loc.latitude.toFixed(5)}, ${loc.longitude.toFixed(5)}
-                `);
+                `)
+                .openPopup();
             
-            document.getElementById('current-time').textContent = 
-                new Date(loc.time).toLocaleString() + 
-                (loc.in_zone ? ` - ${loc.zone_name}` : ' - Unknown Location');
+            const timeStr = new Date(loc.time).toLocaleString();
+            const zoneStr = loc.in_zone ? loc.zone_name : 'Unknown Location';
+            const pointNum = `[${currentIndex + 1}/${locations.length}]`;
+            document.getElementById('current-time').textContent = `${pointNum} ${timeStr} - ${zoneStr}`;
         }
 
         function showError(message) {
