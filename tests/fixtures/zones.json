@@ -1,0 +1,20 @@
+[
+  {
+    "name": "home",
+    "latitude": 54.8985,
+    "longitude": 23.9036,
+    "radius": 100
+  },
+  {
+    "name": "work",
+    "latitude": 54.6872,
+    "longitude": 25.2797,
+    "radius": 50
+  },
+  {
+    "name": "gym",
+    "latitude": 54.9000,
+    "longitude": 23.9000,
+    "radius": 25
+  }
+]

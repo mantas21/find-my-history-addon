@@ -1,0 +1,43 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Add-on
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate add-on configuration
+        run: |
+          echo "Validating add-on structure..."
+          test -f find_my_history_addon/config.json || (echo "Missing config.json" && exit 1)
+          test -f find_my_history_addon/Dockerfile || (echo "Missing Dockerfile" && exit 1)
+          test -f find_my_history_addon/requirements.txt || (echo "Missing requirements.txt" && exit 1)
+          echo "✅ Add-on structure is valid"
+
+      - name: Validate JSON files
+        run: |
+          python3 -m json.tool find_my_history_addon/config.json > /dev/null
+          echo "✅ config.json is valid JSON"
+
+      - name: Check Dockerfile syntax
+        run: |
+          # Basic Dockerfile validation
+          grep -q "FROM" find_my_history_addon/Dockerfile || (echo "Dockerfile missing FROM" && exit 1)
+          echo "✅ Dockerfile syntax check passed"
+
+      - name: Build summary
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Configuration validated" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ JSON files validated" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Dockerfile validated" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          if [ -f CHANGELOG.md ]; then
+            # Extract changelog for this version
+            awk "/^## \[$VERSION\]/,/^## \[/" CHANGELOG.md | sed '$d' > release_notes.txt || true
+            if [ ! -s release_notes.txt ]; then
+              echo "## Changes in $VERSION" > release_notes.txt
+              echo "- See CHANGELOG.md for details" >> release_notes.txt
+            fi
+          else
+            echo "## Release $VERSION" > release_notes.txt
+            echo "See commit history for changes." >> release_notes.txt
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          name: Release ${{ steps.get_version.outputs.version }}
+          body_path: release_notes.txt
+          draft: false
+          prerelease: ${{ contains(steps.get_version.outputs.version, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release summary
+        run: |
+          echo "## Release Created" >> $GITHUB_STEP_SUMMARY
+          echo "Version: ${{ steps.get_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Release published to GitHub" >> $GITHUB_STEP_SUMMARY

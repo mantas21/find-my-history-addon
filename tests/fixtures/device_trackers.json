@@ -1,0 +1,26 @@
+[
+  {
+    "entity_id": "device_tracker.iphone",
+    "state": "home",
+    "attributes": {
+      "latitude": 54.8985,
+      "longitude": 23.9036,
+      "gps_accuracy": 10,
+      "battery_level": 85,
+      "battery_state": "not_charging",
+      "friendly_name": "iPhone"
+    }
+  },
+  {
+    "entity_id": "device_tracker.ipad",
+    "state": "not_home",
+    "attributes": {
+      "latitude": 54.7000,
+      "longitude": 25.2000,
+      "gps_accuracy": 15,
+      "battery_level": 45,
+      "battery_state": "charging",
+      "friendly_name": "iPad"
+    }
+  }
+]
