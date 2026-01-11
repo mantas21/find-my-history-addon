@@ -536,32 +536,46 @@
         
         .time-slider-wrapper {
             flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-        
-        .time-slider-wrapper {
             position: relative;
+            display: flex;
+            align-items: center;
+            height: 20px;
+            padding: 8px 0;
         }
         
         .time-slider-wrapper input[type="range"] {
             width: 100%;
             height: 4px;
             -webkit-appearance: none;
-            background: var(--apple-gray4);
+            background: transparent;
             border-radius: 2px;
             outline: none;
             position: relative;
             z-index: 2;
+            margin: 0;
+        }
+        
+        /* Background track */
+        .time-slider-wrapper::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 100%;
+            height: 4px;
+            background: var(--apple-gray4);
+            border-radius: 2px;
+            z-index: 0;
+            pointer-events: none;
         }
         
         /* Progress track (colored portion) */
         .time-slider-wrapper::before {
             content: '';
             position: absolute;
-            top: 50%;
             left: 0;
+            top: 50%;
             transform: translateY(-50%);
             height: 4px;
             width: var(--progress, 0%);
@@ -569,6 +583,7 @@
             border-radius: 2px;
             z-index: 1;
             transition: width 0.1s ease;
+            pointer-events: none;
         }
         
         @keyframes pulse-ring {
@@ -579,8 +594,8 @@
         
         .time-slider-wrapper input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             background: white;
             border-radius: 50%;
             cursor: pointer;
@@ -588,11 +603,17 @@
             border: 2px solid var(--apple-blue);
             position: relative;
             z-index: 3;
+            margin-top: -7px; /* Center the thumb on the track */
+        }
+        
+        .time-slider-wrapper input[type="range"]::-webkit-slider-runnable-track {
+            height: 4px;
+            background: transparent;
         }
         
         .time-slider-wrapper input[type="range"]::-moz-range-thumb {
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             background: white;
             border-radius: 50%;
             cursor: pointer;
@@ -600,11 +621,17 @@
             border: 2px solid var(--apple-blue);
         }
         
-        .time-markers {
-            display: flex;
-            justify-content: space-between;
-            font-size: var(--font-size-caption2);
-            color: var(--text-tertiary);
+        .time-slider-wrapper input[type="range"]::-moz-range-track {
+            height: 4px;
+            background: var(--apple-gray4);
+            border-radius: 2px;
+        }
+        
+        /* Firefox progress track */
+        .time-slider-wrapper input[type="range"]::-moz-range-progress {
+            background: var(--apple-blue);
+            height: 4px;
+            border-radius: 2px;
         }
         
         .time-display {
@@ -928,10 +955,6 @@
                 <button class="time-nav-btn" id="play-btn" onclick="togglePlay()">▶</button>
                 <div class="time-slider-wrapper">
                     <input type="range" id="time-slider" min="0" max="100" value="100">
-                    <div class="time-markers">
-                        <span class="marker start" id="time-start">--:--</span>
-                        <span class="marker end" id="time-end">--:--</span>
-                    </div>
                 </div>
                 <div class="time-display">
                     <span class="time-current" id="time-current">--:--</span>
@@ -1564,8 +1587,6 @@
                 // Update time nav
                 document.getElementById('time-nav').style.display = 'flex';
                 document.getElementById('time-points').textContent = `${locations.length} pts`;
-                document.getElementById('time-start').textContent = new Date(locations[0].time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-                document.getElementById('time-end').textContent = new Date(locations[locations.length - 1].time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
                 
                 updatePath();
                 currentIndex = locations.length - 1;
@@ -1611,12 +1632,33 @@
                 // Skip the current marker - it will be shown separately with different styling
                 if (index === currentIndex) return;
                 
-                // Past markers: grey/faded, smaller
+                // Calculate distance from current index (how recent)
+                const distanceFromCurrent = Math.abs(index - currentIndex);
+                
+                // Size based on recency: closer to current = larger
+                // Last location (distance 1): 12px
+                // Second last (distance 2): 10px
+                // Third last (distance 3): 8px
+                // Older (distance 4+): 6px
+                let size = 6;
+                let opacity = 0.5;
+                
+                if (distanceFromCurrent === 1) {
+                    size = 12;
+                    opacity = 0.8;
+                } else if (distanceFromCurrent === 2) {
+                    size = 10;
+                    opacity = 0.7;
+                } else if (distanceFromCurrent === 3) {
+                    size = 8;
+                    opacity = 0.6;
+                }
+                
                 const icon = L.divIcon({
                     className: 'small-marker',
-                    html: `<div style="background:#636366; width:6px; height:6px; border-radius:50%; border:1px solid rgba(255,255,255,0.3); opacity:0.6;"></div>`,
-                    iconSize: [6, 6],
-                    iconAnchor: [3, 3]
+                    html: `<div style="background:#636366; width:${size}px; height:${size}px; border-radius:50%; border:1px solid rgba(255,255,255,0.3); opacity:${opacity};"></div>`,
+                    iconSize: [size, size],
+                    iconAnchor: [size/2, size/2]
                 });
                 
                 const marker = L.marker([loc.latitude, loc.longitude], { icon }).addTo(allMarkersLayer);
