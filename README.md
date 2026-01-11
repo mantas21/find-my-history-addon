@@ -2,8 +2,8 @@
 
 📱 **Apple Find My style location tracking** for Home Assistant. Record and visualize device location history from iCloud integration with a beautiful, intuitive interface.
 
-![Version](https://img.shields.io/badge/version-0.9.2-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+![Version](https://img.shields.io/badge/version-0.9.3-blue)
+![License](https://img.shields.io/badge/license-Proprietary-red)
 
 ## ✨ Features
 
