@@ -427,9 +427,15 @@
             font-weight: 500;
             color: #495057;
         }
+        .popup-section.origin .from-address {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
         .popup-section.origin .from-distance {
             font-size: 12px;
             color: #888;
+            margin-top: 4px;
         }
         .popup-loading {
             color: #888;
@@ -872,7 +878,7 @@
             };
         }
         
-        function createPopupContent(loc, idx, placeName = null) {
+        function createPopupContent(loc, idx, placeName = null, prevPlaceName = null) {
             const deviceName = loc.device_name || loc.device_id;
             const timestamp = formatTimestamp(loc.time);
             const duration = calculateDuration(locations, idx);
@@ -903,14 +909,32 @@
                     </div>
                 `;
             } else if (prevLocation) {
-                const fromName = prevLocation.zoneName || 
-                                 `${prevLocation.location.latitude.toFixed(4)}, ${prevLocation.location.longitude.toFixed(4)}`;
-                originHtml = `
-                    <div class="popup-section origin">
-                        <div class="from-label">← From: ${fromName}</div>
-                        <div class="from-distance">${formatDistance(prevLocation.distance)}</div>
-                    </div>
-                `;
+                // Show rich location info for "From" section
+                if (prevPlaceName) {
+                    originHtml = `
+                        <div class="popup-section origin">
+                            <div class="from-label">← From: ${prevPlaceName.primary}</div>
+                            ${prevPlaceName.secondary ? `<div class="from-address">${prevPlaceName.secondary}</div>` : ''}
+                            <div class="from-distance">${formatDistance(prevLocation.distance)}</div>
+                        </div>
+                    `;
+                } else if (prevLocation.zoneName) {
+                    // Known zone - show zone name
+                    originHtml = `
+                        <div class="popup-section origin">
+                            <div class="from-label">← From: 🏠 ${prevLocation.zoneName}</div>
+                            <div class="from-distance">${formatDistance(prevLocation.distance)}</div>
+                        </div>
+                    `;
+                } else {
+                    // Still loading
+                    originHtml = `
+                        <div class="popup-section origin">
+                            <div class="from-label popup-loading">← From: Loading...</div>
+                            <div class="from-distance">${formatDistance(prevLocation.distance)}</div>
+                        </div>
+                    `;
+                }
             }
             
             return `
@@ -929,8 +953,27 @@
         }
         
         async function updatePopupWithPlace(popup, loc, idx) {
-            const placeName = await getLocationDisplayName(loc);
-            popup.setContent(createPopupContent(loc, idx, placeName));
+            const prevLocation = findPreviousStableLocation(locations, idx);
+            
+            // Fetch current location place name
+            const placeNamePromise = getLocationDisplayName(loc);
+            
+            // Fetch previous location place name (if exists and not a known zone)
+            let prevPlaceNamePromise = null;
+            if (prevLocation && !prevLocation.zoneName) {
+                prevPlaceNamePromise = getLocationDisplayName(prevLocation.location);
+            }
+            
+            // Wait for current location first and update
+            const placeName = await placeNamePromise;
+            
+            // Get previous place name if we're fetching it
+            let prevPlaceName = null;
+            if (prevPlaceNamePromise) {
+                prevPlaceName = await prevPlaceNamePromise;
+            }
+            
+            popup.setContent(createPopupContent(loc, idx, placeName, prevPlaceName));
         }
 
         // Initialize
