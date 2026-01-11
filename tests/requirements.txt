@@ -5,6 +5,8 @@ pytest-cov>=4.1.0
 pytest-mock>=3.11.1
 responses>=0.23.1
 aioresponses>=0.7.4
+# Pin PyYAML>=6.0 to avoid build issues (required by responses)
+PyYAML>=6.0
 
 # Code quality
 pylint>=2.17.0
