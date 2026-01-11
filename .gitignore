@@ -119,3 +119,7 @@ CONFIGURATION_TEMPLATE.json
 DEPLOYMENT_STATUS.md
 *_PRIVATE*
 *.secret
+
+# Archive directory (local only, not pushed to GitHub)
+archive/
+node_modules/

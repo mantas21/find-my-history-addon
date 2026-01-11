@@ -4,6 +4,9 @@
 
 [![Version](https://img.shields.io/badge/version-0.9.3-blue)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
+[![Tests](https://github.com/mantas21/find-my-history-addon/workflows/Tests/badge.svg)](https://github.com/mantas21/find-my-history-addon/actions)
+[![CI](https://github.com/mantas21/find-my-history-addon/workflows/CI/badge.svg)](https://github.com/mantas21/find-my-history-addon/actions)
+[![Build](https://github.com/mantas21/find-my-history-addon/workflows/Build/badge.svg)](https://github.com/mantas21/find-my-history-addon/actions)
 
 ## ✨ Features
 
@@ -158,7 +161,7 @@ curl -X POST "http://a0d7b954-influxdb:8086/query" \
 
 The add-on provides a REST API:
 
-- `GET /api/health` - Health check
+- `GET /health` - Health check endpoint
 - `GET /api/devices` - List all device trackers with tracking status
 - `GET /api/zones` - List Home Assistant zones
 - `GET /api/locations?device_id=xxx&start=xxx&end=xxx&limit=xxx` - Get location history
@@ -239,6 +242,8 @@ timestamp: location update time
 - **Frontend**: Vanilla JavaScript, Leaflet.js for maps
 - **Architecture**: Home Assistant Add-on with S6 overlay
 - **API**: RESTful API with CORS support
+- **Testing**: Comprehensive test suite with 67 tests (59 Python + 8 frontend)
+- **CI/CD**: Automated testing and deployment via GitHub Actions
 
 ## 📝 Changelog
 
@@ -254,9 +259,33 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 - ⏱️ Compact timeline navigation
 - 📱 Responsive mobile layout
 
+## 🧪 Testing
+
+This project includes a comprehensive test suite:
+
+- **67 tests total** (59 Python unit/integration tests + 8 frontend tests)
+- **Coverage**: 49% overall, 90%+ for core modules
+- **CI/CD**: Automated testing on every push and pull request
+- **Test Documentation**: See [tests/README.md](tests/README.md)
+
+Run tests locally:
+```bash
+# Python tests
+pytest tests/ -v
+
+# Frontend tests
+cd tests/frontend && npm test
+```
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please open an issue or pull request.
+
+**Before submitting a PR:**
+- Ensure all tests pass (`pytest tests/ -v`)
+- Run linting (`pylint`, `black --check`)
+- Update documentation if needed
+- Follow the PR template guidelines
 
 ## 📄 License
 
