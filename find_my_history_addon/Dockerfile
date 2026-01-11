@@ -1,4 +1,4 @@
-ARG BUILD_FROM=python:3.11-alpine
+ARG BUILD_FROM
 FROM ${BUILD_FROM}
 
 # Install jq for configuration parsing
@@ -9,7 +9,7 @@ WORKDIR /app
 
 # Copy requirements first for better caching
 COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY find_my_history/ /app/find_my_history/
@@ -19,4 +19,4 @@ COPY run.sh /run.sh
 RUN chmod a+x /run.sh
 
 # Set entrypoint
-ENTRYPOINT ["/run.sh"]
+CMD ["/run.sh"]
