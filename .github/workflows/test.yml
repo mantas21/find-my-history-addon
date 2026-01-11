@@ -76,7 +76,7 @@ jobs:
 
       - name: Run Python tests
         run: |
-          pytest tests/unit tests/integration -v --cov=find_my_history_addon/find_my_history --cov-report=xml --cov-report=term --cov-report=html
+          pytest tests/unit tests/integration -v --cov=find_my_history_addon/find_my_history --cov-report=xml --cov-report=term --cov-report=html --cov-fail-under=45
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
