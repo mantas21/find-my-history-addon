@@ -6,6 +6,7 @@
     <title>Find My Location History</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <style>
         * {
             margin: 0;
@@ -33,21 +34,126 @@
         h1::before {
             content: "📍";
         }
-        h2 {
-            font-size: 1.1rem;
-            margin-bottom: 12px;
-            color: #888;
-            font-weight: normal;
+        
+        /* Tracked Devices - Pill Buttons */
+        .tracked-devices-section {
+            margin-bottom: 20px;
+        }
+        .tracked-devices-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            min-height: 44px;
+            align-items: center;
+        }
+        .tracked-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px 8px 16px;
+            background: #2a2a2a;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid #444;
+            font-size: 14px;
+        }
+        .tracked-pill:hover {
+            background: #3a3a3a;
+        }
+        .tracked-pill.selected {
+            border-color: #0d6efd;
+            background: #1a3a5c;
+            box-shadow: 0 0 12px rgba(13, 110, 253, 0.4);
+        }
+        .tracked-pill .device-name {
+            font-weight: 500;
+            max-width: 150px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .tracked-pill .device-state {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: #444;
+        }
+        .tracked-pill .device-state.home {
+            background: #1e4d2b;
+            color: #4ade80;
+        }
+        .tracked-pill .device-state.not_home,
+        .tracked-pill .device-state.away {
+            background: #4d3a1e;
+            color: #fbbf24;
+        }
+        .tracked-pill .remove-btn {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: none;
+            background: #5a2d2d;
+            color: #f87171;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            margin-left: 4px;
+        }
+        .tracked-pill .remove-btn:hover {
+            background: #dc3545;
+            color: white;
+        }
+        .no-tracked-msg {
+            color: #666;
+            font-style: italic;
+            padding: 10px 0;
         }
         
-        /* Device Cards Grid */
-        .devices-section {
-            margin-bottom: 25px;
+        /* Collapsible More Devices Section */
+        .more-devices-section {
+            margin-bottom: 20px;
+        }
+        .more-devices-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 15px;
+            background: #2a2a2a;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .more-devices-header:hover {
+            background: #3a3a3a;
+        }
+        .more-devices-header .arrow {
+            transition: transform 0.3s;
+            font-size: 0.8rem;
+        }
+        .more-devices-header.expanded .arrow {
+            transform: rotate(90deg);
+        }
+        .more-devices-header .count {
+            color: #888;
+        }
+        .more-devices-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .more-devices-content.expanded {
+            max-height: 1000px;
         }
         .devices-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: 12px;
+            padding-top: 15px;
         }
         .device-card {
             background: #2a2a2a;
@@ -62,71 +168,55 @@
         }
         .device-card:hover {
             background: #3a3a3a;
-        }
-        .device-card.tracked {
-            border-color: #198754;
-            background: #1e3a2f;
-        }
-        .device-card.selected {
-            border-color: #0d6efd;
-            box-shadow: 0 0 10px rgba(13, 110, 253, 0.3);
+            border-color: #555;
         }
         .device-info {
             flex: 1;
             min-width: 0;
         }
-        .device-name {
+        .device-info .device-name {
             font-weight: 500;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .device-state {
+        .device-info .device-state {
             font-size: 0.8rem;
             color: #888;
             margin-top: 2px;
         }
-        .device-state.home { color: #198754; }
-        .device-state.away { color: #ffc107; }
-        .device-state.not_home { color: #ffc107; }
+        .device-info .device-state.home { color: #198754; }
+        .device-info .device-state.away,
+        .device-info .device-state.not_home { color: #ffc107; }
         
-        .track-btn {
-            width: 36px;
-            height: 36px;
+        .add-btn {
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             border: none;
+            background: #2d5a3d;
+            color: #4ade80;
             font-size: 1.2rem;
             font-weight: bold;
             cursor: pointer;
-            transition: all 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.2s;
             flex-shrink: 0;
             margin-left: 10px;
         }
-        .track-btn.add {
-            background: #2d5a3d;
-            color: #4ade80;
-        }
-        .track-btn.add:hover {
+        .add-btn:hover {
             background: #198754;
             color: white;
-        }
-        .track-btn.remove {
-            background: #5a2d2d;
-            color: #f87171;
-        }
-        .track-btn.remove:hover {
-            background: #dc3545;
-            color: white;
+            transform: scale(1.1);
         }
         
-        /* Controls */
-        .controls {
+        /* Controls & Stats */
+        .controls-row {
             display: flex;
             gap: 15px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             flex-wrap: wrap;
             align-items: center;
         }
@@ -150,62 +240,86 @@
             background: #0b5ed7;
         }
         
-        /* Stats */
         .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-bottom: 15px;
         }
         .stat-card {
             background: #2a2a2a;
             border-radius: 10px;
-            padding: 15px;
+            padding: 12px;
             text-align: center;
         }
         .stat-value {
-            font-size: 2rem;
+            font-size: 1.5rem;
             font-weight: bold;
             color: #0d6efd;
         }
         .stat-label {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: #888;
-            margin-top: 5px;
+            margin-top: 3px;
         }
-        .stat-card.warning .stat-value { color: #ffc107; }
-        .stat-card.danger .stat-value { color: #dc3545; }
         .stat-card.success .stat-value { color: #198754; }
+        .stat-card.danger .stat-value { color: #dc3545; }
         
         /* Map */
+        .map-container {
+            position: relative;
+        }
         #map {
             width: 100%;
             height: 500px;
             border-radius: 10px;
             overflow: hidden;
         }
+        .map-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(42, 42, 42, 0.95);
+            padding: 8px 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+        .map-controls label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+        .map-controls input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
         
         /* Error/Loading */
-        .loading { text-align: center; padding: 50px; color: #888; }
+        .loading { text-align: center; padding: 30px; color: #888; }
         .error {
             background: #dc3545;
             color: white;
             padding: 15px;
             border-radius: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         .info-message {
             background: #2a4a6a;
             color: #a8d4ff;
-            padding: 15px;
+            padding: 12px;
             border-radius: 8px;
-            margin-bottom: 20px;
             text-align: center;
         }
         
         /* Time Slider */
         .time-slider-container {
-            margin: 20px 0;
+            margin: 15px 0;
             padding: 15px;
             background: #2a2a2a;
             border-radius: 10px;
@@ -234,7 +348,7 @@
         #current-time {
             text-align: center;
             margin-top: 10px;
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
         
         /* Legend */
@@ -243,11 +357,13 @@
             gap: 20px;
             justify-content: center;
             margin-top: 15px;
+            flex-wrap: wrap;
         }
         .legend-item {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
+            font-size: 0.9rem;
         }
         .legend-dot {
             width: 12px;
@@ -256,39 +372,41 @@
         }
         .legend-dot.known { background: #198754; }
         .legend-dot.unknown { background: #dc3545; }
-        
-        /* Selected device indicator */
-        .selected-device-info {
-            background: #2a4a6a;
-            padding: 10px 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        .legend-dot.heat { 
+            background: linear-gradient(90deg, blue, lime, yellow, red);
+            width: 40px;
+            border-radius: 3px;
         }
-        .selected-device-info .label { color: #888; }
-        .selected-device-info .name { font-weight: 600; color: #a8d4ff; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Find My Location History</h1>
         
-        <!-- Devices Section -->
-        <div class="devices-section">
-            <h2>Devices <span id="device-count"></span></h2>
-            <div class="devices-grid" id="devices-grid">
-                <div class="loading">Loading devices...</div>
+        <!-- Tracked Devices as Pills -->
+        <div class="tracked-devices-section">
+            <div class="tracked-devices-row" id="tracked-devices-row">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+        
+        <!-- Collapsible More Devices -->
+        <div class="more-devices-section" id="more-devices-section" style="display: none;">
+            <div class="more-devices-header" id="more-devices-header" onclick="toggleMoreDevices()">
+                <span class="arrow">▶</span>
+                <span id="more-devices-count">0 more devices</span>
+            </div>
+            <div class="more-devices-content" id="more-devices-content">
+                <div class="devices-grid" id="devices-grid"></div>
             </div>
         </div>
 
         <div id="error-container"></div>
         
-        <!-- Selected Device Info -->
-        <div class="selected-device-info" id="selected-device-info" style="display: none;">
-            <span class="label">Viewing:</span>
-            <span class="name" id="selected-device-name">-</span>
+        <!-- Controls Row -->
+        <div class="controls-row" id="controls-row" style="display: none;">
+            <span style="color: #888;">Viewing:</span>
+            <strong id="selected-device-name" style="color: #a8d4ff;">-</strong>
             <select id="time-range" style="margin-left: auto;">
                 <option value="1h">Last 1 hour</option>
                 <option value="6h">Last 6 hours</option>
@@ -299,22 +417,30 @@
             <button class="primary" onclick="loadData()">Refresh</button>
         </div>
         
-        <div class="stats" id="stats">
+        <div class="stats">
             <div class="stat-card">
                 <div class="stat-value" id="total-points">-</div>
-                <div class="stat-label">Total Points</div>
+                <div class="stat-label">Points</div>
             </div>
             <div class="stat-card success">
                 <div class="stat-value" id="known-locations">-</div>
-                <div class="stat-label">Known Locations</div>
+                <div class="stat-label">Known</div>
             </div>
             <div class="stat-card danger">
                 <div class="stat-value" id="unknown-locations">-</div>
-                <div class="stat-label">Unknown Locations</div>
+                <div class="stat-label">Unknown</div>
             </div>
         </div>
 
-        <div id="map"></div>
+        <div class="map-container">
+            <div class="map-controls">
+                <label>
+                    <input type="checkbox" id="heatmap-toggle" onchange="toggleHeatmap()">
+                    Heatmap
+                </label>
+            </div>
+            <div id="map"></div>
+        </div>
 
         <div class="time-slider-container">
             <label>Time Navigation <span id="point-info">(0 points)</span></label>
@@ -322,7 +448,7 @@
                 <button id="play-btn" onclick="togglePlay()" style="width: 50px;">▶</button>
                 <input type="range" id="time-slider" min="0" max="100" value="100" style="flex: 1;">
             </div>
-            <div id="current-time">Click a tracked device to view location history</div>
+            <div id="current-time">Select a tracked device to view history</div>
         </div>
 
         <div class="legend">
@@ -332,7 +458,11 @@
             </div>
             <div class="legend-item">
                 <div class="legend-dot unknown"></div>
-                <span>Unknown Location</span>
+                <span>Unknown</span>
+            </div>
+            <div class="legend-item" id="heat-legend" style="display: none;">
+                <div class="legend-dot heat"></div>
+                <span>Time Spent</span>
             </div>
         </div>
     </div>
@@ -342,14 +472,16 @@
         let pathLayer;
         let markerLayer;
         let allMarkersLayer;
+        let heatLayer = null;
         let locations = [];
         let devices = [];
         let selectedDeviceId = null;
         let currentIndex = 0;
         let isPlaying = false;
         let playInterval = null;
+        let moreDevicesExpanded = false;
 
-        // Initialize map
+        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             map = L.map('map').setView([54.9, 23.9], 10);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -362,15 +494,16 @@
             
             loadDevices();
             
-            // Time slider
             document.getElementById('time-slider').addEventListener('input', function(e) {
                 if (locations.length === 0) return;
                 currentIndex = Math.floor((e.target.value / 100) * Math.max(locations.length - 1, 0));
                 updateCurrentMarker();
             });
             
-            // Time range change
             document.getElementById('time-range').addEventListener('change', loadData);
+            
+            // Restore collapse state
+            moreDevicesExpanded = localStorage.getItem('moreDevicesExpanded') === 'true';
         });
         
         function togglePlay() {
@@ -395,6 +528,87 @@
                 clearInterval(playInterval);
             }
         }
+        
+        function toggleMoreDevices() {
+            moreDevicesExpanded = !moreDevicesExpanded;
+            localStorage.setItem('moreDevicesExpanded', moreDevicesExpanded);
+            
+            const header = document.getElementById('more-devices-header');
+            const content = document.getElementById('more-devices-content');
+            
+            if (moreDevicesExpanded) {
+                header.classList.add('expanded');
+                content.classList.add('expanded');
+            } else {
+                header.classList.remove('expanded');
+                content.classList.remove('expanded');
+            }
+        }
+        
+        function toggleHeatmap() {
+            const enabled = document.getElementById('heatmap-toggle').checked;
+            document.getElementById('heat-legend').style.display = enabled ? 'flex' : 'none';
+            
+            if (enabled) {
+                updateHeatmap();
+            } else if (heatLayer) {
+                map.removeLayer(heatLayer);
+                heatLayer = null;
+            }
+        }
+        
+        function updateHeatmap() {
+            if (heatLayer) {
+                map.removeLayer(heatLayer);
+            }
+            
+            if (locations.length === 0) return;
+            
+            // Calculate intensity based on time spent
+            // Group nearby points and sum time
+            const heatData = [];
+            const groups = [];
+            const PROXIMITY_THRESHOLD = 0.0005; // ~50 meters
+            
+            locations.forEach((loc, i) => {
+                // Find if there's an existing group nearby
+                let foundGroup = null;
+                for (const group of groups) {
+                    const dist = Math.sqrt(
+                        Math.pow(loc.latitude - group.lat, 2) + 
+                        Math.pow(loc.longitude - group.lon, 2)
+                    );
+                    if (dist < PROXIMITY_THRESHOLD) {
+                        foundGroup = group;
+                        break;
+                    }
+                }
+                
+                if (foundGroup) {
+                    foundGroup.count++;
+                    // Update centroid
+                    foundGroup.lat = (foundGroup.lat * (foundGroup.count - 1) + loc.latitude) / foundGroup.count;
+                    foundGroup.lon = (foundGroup.lon * (foundGroup.count - 1) + loc.longitude) / foundGroup.count;
+                } else {
+                    groups.push({ lat: loc.latitude, lon: loc.longitude, count: 1 });
+                }
+            });
+            
+            // Normalize and create heat data
+            const maxCount = Math.max(...groups.map(g => g.count), 1);
+            groups.forEach(g => {
+                const intensity = Math.min(g.count / maxCount, 1) * 0.8 + 0.2;
+                heatData.push([g.lat, g.lon, intensity]);
+            });
+            
+            heatLayer = L.heatLayer(heatData, {
+                radius: 25,
+                blur: 15,
+                maxZoom: 17,
+                max: 1.0,
+                gradient: {0.2: 'blue', 0.4: 'cyan', 0.6: 'lime', 0.8: 'yellow', 1: 'red'}
+            }).addTo(map);
+        }
 
         async function loadDevices() {
             try {
@@ -404,50 +618,80 @@
                 devices = data.devices || [];
                 renderDevices();
                 
-                // Auto-select first tracked device
                 const firstTracked = devices.find(d => d.is_tracked);
                 if (firstTracked) {
                     selectDevice(firstTracked.entity_id);
                 }
-                
             } catch (error) {
                 showError('Failed to load devices: ' + error.message);
             }
         }
         
         function renderDevices() {
-            const grid = document.getElementById('devices-grid');
-            const countSpan = document.getElementById('device-count');
+            const trackedRow = document.getElementById('tracked-devices-row');
+            const moreSection = document.getElementById('more-devices-section');
+            const moreCount = document.getElementById('more-devices-count');
+            const moreGrid = document.getElementById('devices-grid');
+            const moreHeader = document.getElementById('more-devices-header');
+            const moreContent = document.getElementById('more-devices-content');
             
-            const trackedCount = devices.filter(d => d.is_tracked).length;
-            countSpan.textContent = `(${trackedCount} tracked of ${devices.length})`;
+            const tracked = devices.filter(d => d.is_tracked);
+            const untracked = devices.filter(d => !d.is_tracked);
             
-            if (devices.length === 0) {
-                grid.innerHTML = '<div class="info-message">No device_tracker entities found in Home Assistant</div>';
-                return;
+            // Render tracked devices as pills
+            if (tracked.length === 0) {
+                trackedRow.innerHTML = '<span class="no-tracked-msg">No devices tracked. Add devices from the list below.</span>';
+            } else {
+                trackedRow.innerHTML = tracked.map(device => {
+                    const isSelected = device.entity_id === selectedDeviceId;
+                    const stateClass = device.state === 'home' ? 'home' : 
+                                      (device.state === 'not_home' || device.state === 'away') ? 'not_home' : '';
+                    const stateText = device.state === 'home' ? 'home' : 
+                                     (device.state === 'not_home' || device.state === 'away') ? 'away' : device.state || '?';
+                    
+                    return `
+                        <div class="tracked-pill ${isSelected ? 'selected' : ''}" 
+                             onclick="selectDevice('${device.entity_id}')">
+                            <span class="device-name">${device.name}</span>
+                            <span class="device-state ${stateClass}">${stateText}</span>
+                            <button class="remove-btn" 
+                                    onclick="event.stopPropagation(); toggleTracking('${device.entity_id}')"
+                                    title="Stop tracking">×</button>
+                        </div>
+                    `;
+                }).join('');
             }
             
-            grid.innerHTML = devices.map(device => {
-                const isTracked = device.is_tracked;
-                const isSelected = device.entity_id === selectedDeviceId;
-                const stateClass = device.state === 'home' ? 'home' : (device.state === 'not_home' || device.state === 'away') ? 'away' : '';
+            // Render untracked devices in collapsible section
+            if (untracked.length > 0) {
+                moreSection.style.display = 'block';
+                moreCount.textContent = `${untracked.length} more device${untracked.length !== 1 ? 's' : ''}`;
                 
-                return `
-                    <div class="device-card ${isTracked ? 'tracked' : ''} ${isSelected ? 'selected' : ''}" 
-                         onclick="selectDevice('${device.entity_id}')"
-                         data-entity-id="${device.entity_id}">
-                        <div class="device-info">
-                            <div class="device-name">${device.name}</div>
-                            <div class="device-state ${stateClass}">${device.state || 'unknown'}</div>
+                moreGrid.innerHTML = untracked.map(device => {
+                    const stateClass = device.state === 'home' ? 'home' : 
+                                      (device.state === 'not_home' || device.state === 'away') ? 'away' : '';
+                    
+                    return `
+                        <div class="device-card">
+                            <div class="device-info">
+                                <div class="device-name">${device.name}</div>
+                                <div class="device-state ${stateClass}">${device.state || 'unknown'}</div>
+                            </div>
+                            <button class="add-btn" 
+                                    onclick="toggleTracking('${device.entity_id}')"
+                                    title="Start tracking">+</button>
                         </div>
-                        <button class="track-btn ${isTracked ? 'remove' : 'add'}" 
-                                onclick="event.stopPropagation(); toggleTracking('${device.entity_id}')"
-                                title="${isTracked ? 'Stop tracking' : 'Start tracking'}">
-                            ${isTracked ? '−' : '+'}
-                        </button>
-                    </div>
-                `;
-            }).join('');
+                    `;
+                }).join('');
+                
+                // Apply saved expand state
+                if (moreDevicesExpanded) {
+                    moreHeader.classList.add('expanded');
+                    moreContent.classList.add('expanded');
+                }
+            } else {
+                moreSection.style.display = 'none';
+            }
         }
         
         async function toggleTracking(entityId) {
@@ -465,13 +709,17 @@
                     return;
                 }
                 
-                // Update local state
                 const device = devices.find(d => d.entity_id === entityId);
                 if (device) {
                     device.is_tracked = result.is_tracked;
                 }
                 
                 renderDevices();
+                
+                // If we just tracked a device, select it
+                if (result.is_tracked) {
+                    selectDevice(entityId);
+                }
                 
             } catch (error) {
                 showError('Failed to toggle tracking: ' + error.message);
@@ -484,7 +732,7 @@
             const device = devices.find(d => d.entity_id === entityId);
             if (device) {
                 document.getElementById('selected-device-name').textContent = device.name;
-                document.getElementById('selected-device-info').style.display = 'flex';
+                document.getElementById('controls-row').style.display = 'flex';
             }
             
             renderDevices();
@@ -509,9 +757,7 @@
         }
 
         async function loadData() {
-            if (!selectedDeviceId) {
-                return;
-            }
+            if (!selectedDeviceId) return;
             
             clearError();
             const range = getTimeRange();
@@ -533,7 +779,7 @@
                 
                 if (locations.length === 0) {
                     clearMap();
-                    document.getElementById('current-time').textContent = 'No location data for selected time range';
+                    document.getElementById('current-time').textContent = 'No data for selected time range';
                     updateStats();
                     return;
                 }
@@ -544,6 +790,11 @@
                 currentIndex = locations.length - 1;
                 document.getElementById('time-slider').value = 100;
                 updateCurrentMarker();
+                
+                // Update heatmap if enabled
+                if (document.getElementById('heatmap-toggle').checked) {
+                    updateHeatmap();
+                }
                 
                 if (locations.length > 0) {
                     const coords = locations.map(l => [l.latitude, l.longitude]);
@@ -559,6 +810,10 @@
             pathLayer.clearLayers();
             allMarkersLayer.clearLayers();
             markerLayer.clearLayers();
+            if (heatLayer) {
+                map.removeLayer(heatLayer);
+                heatLayer = null;
+            }
         }
 
         function updateStats() {
@@ -640,7 +895,7 @@
                 .openPopup();
             
             const timeStr = new Date(loc.time).toLocaleString();
-            const zoneStr = loc.in_zone ? loc.zone_name : 'Unknown Location';
+            const zoneStr = loc.in_zone ? loc.zone_name : 'Unknown';
             const pointNum = `[${currentIndex + 1}/${locations.length}]`;
             document.getElementById('current-time').textContent = `${pointNum} ${timeStr} - ${zoneStr}`;
         }
